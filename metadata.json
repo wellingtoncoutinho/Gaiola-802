@@ -1,0 +1,6 @@
+{
+  "name": "Gaiola 802",
+  "description": "Gestão inteligente e compartilhamento de lavanderia e varais no apê 802 em Copacabana, Rio de Janeiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

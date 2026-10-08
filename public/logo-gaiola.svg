@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 320" width="200" height="320" fill="none" stroke="#1B2A4A" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Chain with beads -->
+  <g fill="#1B2A4A" stroke="none">
+    <circle cx="100" cy="8" r="3" />
+    <circle cx="100" cy="18" r="3" />
+    <circle cx="100" cy="28" r="3" />
+    <circle cx="100" cy="38" r="3" />
+    <circle cx="100" cy="48" r="3" />
+    <circle cx="100" cy="58" r="3" />
+    <circle cx="100" cy="68" r="3" />
+    <circle cx="100" cy="78" r="3" />
+    <circle cx="100" cy="88" r="3" />
+    <circle cx="100" cy="98" r="3" />
+  </g>
+
+  <!-- Top connecting ring -->
+  <circle cx="100" cy="110" r="8" stroke-width="3.5" fill="none" />
+
+  <!-- Cage finial cap -->
+  <path d="M 94 125 C 94 119 106 119 106 125 Z" fill="#1B2A4A" stroke="#1B2A4A" stroke-width="1.5" />
+
+  <!-- Cage Outer Bell-shaped Frame -->
+  <path d="M 100 125 C 92 142 66 160 52 184 C 44 198 46 222 51 252 C 54 266 56 276 58 284" stroke-width="4" fill="none" />
+  <path d="M 100 125 C 108 142 134 160 148 184 C 156 198 154 222 149 252 C 146 266 144 276 142 284" stroke-width="4" fill="none" />
+
+  <!-- Base -->
+  <path d="M 54 284 L 146 284 L 149 294 L 51 294 Z" fill="#1B2A4A" stroke="#1B2A4A" stroke-width="2" />
+
+  <!-- Horizontal perches -->
+  <line x1="52" y1="190" x2="148" y2="190" stroke-width="3.5" />
+  <line x1="53" y1="238" x2="147" y2="238" stroke-width="3.5" />
+
+  <!-- Vertical bars -->
+  <line x1="100" y1="125" x2="100" y2="284" stroke-width="2.5" />
+  <path d="M 87 137 C 86 160 84 210 85 284" stroke-width="2.5" fill="none" />
+  <path d="M 72 154 C 71 180 70 220 72 284" stroke-width="2.5" fill="none" />
+  <path d="M 113 137 C 114 160 116 210 115 284" stroke-width="2.5" fill="none" />
+  <path d="M 128 154 C 129 180 130 220 128 284" stroke-width="2.5" fill="none" />
+
+  <!-- Bird 1 (upper right, looking left) -->
+  <g fill="#1B2A4A" stroke="none">
+    <path d="M 132 172 C 126 172, 120 176, 118 181 C 116 183, 113 184, 111 185 C 114 187, 117 188, 119 190 C 122 195, 127 197, 134 195 C 137 194, 140 197, 142 201 C 142 196, 140 191, 139 187 C 138 180, 136 172, 132 172 Z" />
+    <ellipse cx="123" cy="178" rx="5" ry="4.5" />
+    <polygon points="119,177 114,179 119,181" />
+    <path d="M 135 192 L 143 203 L 138 202 Z" />
+  </g>
+
+  <!-- Bird 2 (lower left, looking right) -->
+  <g fill="#1B2A4A" stroke="none">
+    <path d="M 82 222 C 89 222, 96 226, 98 231 C 101 233, 104 234, 107 235 C 104 237, 101 238, 98 240 C 95 244, 88 246, 81 245 C 77 244, 73 248, 70 254 C 71 248, 73 243, 74 239 C 76 230, 78 222, 82 222 Z" />
+    <ellipse cx="93" cy="227" rx="5.5" ry="5" />
+    <polygon points="98,225 104,228 98,230" />
+    <path d="M 77 241 L 69 253 L 74 251 Z" />
+  </g>
+</svg>
