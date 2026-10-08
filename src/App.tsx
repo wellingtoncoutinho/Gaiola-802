@@ -37,6 +37,7 @@ import {
   releaseReservationEarly,
   fetchReservationsFromServer,
   subscribeToSync,
+  startLiveCloudSync,
 } from './services/storageService';
 import { getReservationStatus } from './utils/statusHelper';
 
@@ -127,7 +128,7 @@ export default function App() {
   // 5. Reservations State
   const [reservations, setReservations] = useState<Reservation[]>(loadReservations);
 
-  // Synchronize reservations with server API and other open tabs / devices
+  // Synchronize reservations with cloud database and across all devices in real-time
   useEffect(() => {
     // 1. Initial fetch from server
     fetchReservationsFromServer().then((data) => {
@@ -136,12 +137,15 @@ export default function App() {
       }
     });
 
-    // 2. Cross-tab sync on same device
+    // 2. Cross-tab & multi-device sync listener
     const unsubscribeSync = subscribeToSync((synced) => {
       setReservations(synced);
     });
 
-    // 3. Server-Sent Events (SSE) for instant cross-device sync (e.g. phone vs PC)
+    // 3. Start live cloud background sync (4s poll, instant refresh on tab focus / mobile unlock)
+    const stopLiveSync = startLiveCloudSync();
+
+    // 4. Server-Sent Events (SSE) for dev environment
     let eventSource: EventSource | null = null;
     try {
       eventSource = new EventSource('/api/reservations/events');
@@ -162,26 +166,12 @@ export default function App() {
       // EventSource fallback
     }
 
-    // 4. Polling fallback every 8 seconds
-    const pollInterval = setInterval(() => {
-      fetchReservationsFromServer().then((data) => {
-        if (Array.isArray(data)) {
-          setReservations((prev) => {
-            if (JSON.stringify(prev) !== JSON.stringify(data)) {
-              return data;
-            }
-            return prev;
-          });
-        }
-      });
-    }, 8000);
-
     return () => {
       unsubscribeSync();
+      stopLiveSync();
       if (eventSource) {
         eventSource.close();
       }
-      clearInterval(pollInterval);
     };
   }, []);
 

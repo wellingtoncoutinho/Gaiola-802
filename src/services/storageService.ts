@@ -1,15 +1,20 @@
 import { ROOMMATES } from '../constants/roommates';
 import { MoradorId, Reservation } from '../types';
 
-const STORAGE_KEY_RESERVATIONS = 'gaiola802_reservations_v4';
-const STORAGE_KEY_INITIALIZED = 'gaiola802_initialized_v4';
+const STORAGE_KEY_RESERVATIONS = 'gaiola802_reservations_v5';
+const STORAGE_KEY_INITIALIZED = 'gaiola802_initialized_v5';
 const STORAGE_KEY_ACTIVE_USER = 'gaiola802_active_user_v3';
+
+const CLOUD_BLOB_FALLBACK_URL =
+  'https://qnvauhobbyljfv0c.public.blob.vercel-storage.com/reservations.json';
 
 // Cross-tab broadcast channel for instantaneous same-device sync
 const syncChannel: BroadcastChannel | null =
   typeof window !== 'undefined' && 'BroadcastChannel' in window
-    ? new BroadcastChannel('gaiola802_reservations_channel')
+    ? new BroadcastChannel('gaiola802_reservations_channel_v5')
     : null;
+
+const syncListeners = new Set<(reservations: Reservation[]) => void>();
 
 function notifySync(reservations: Reservation[]): void {
   try {
@@ -17,18 +22,26 @@ function notifySync(reservations: Reservation[]): void {
   } catch {
     // ignore
   }
+  for (const listener of syncListeners) {
+    try {
+      listener(reservations);
+    } catch (e) {
+      console.error('[Storage] Listener error:', e);
+    }
+  }
 }
 
 export function subscribeToSync(onSync: (reservations: Reservation[]) => void): () => void {
-  if (!syncChannel) return () => {};
+  syncListeners.add(onSync);
 
-  const handleMessage = (event: MessageEvent) => {
-    if (event.data?.type === 'SYNC_RESERVATIONS' && Array.isArray(event.data.payload)) {
-      onSync(event.data.payload);
-    }
-  };
-
-  syncChannel.addEventListener('message', handleMessage);
+  if (syncChannel) {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SYNC_RESERVATIONS' && Array.isArray(event.data.payload)) {
+        onSync(event.data.payload);
+      }
+    };
+    syncChannel.addEventListener('message', handleMessage);
+  }
 
   // Also listen to window storage event for fallback
   const handleStorage = (event: StorageEvent) => {
@@ -46,7 +59,7 @@ export function subscribeToSync(onSync: (reservations: Reservation[]) => void): 
   window.addEventListener('storage', handleStorage);
 
   return () => {
-    syncChannel.removeEventListener('message', handleMessage);
+    syncListeners.delete(onSync);
     window.removeEventListener('storage', handleStorage);
   };
 }
@@ -74,73 +87,18 @@ export function setActiveMoradorId(id: MoradorId): void {
 export function generateInitialSeedReservations(): Reservation[] {
   const now = new Date();
 
-  // Seed 1: Thaciane lavou roupas de dia a dia no Varal 1
-  const thacianeStart = new Date(now);
-  thacianeStart.setHours(now.getHours() - 3, 0, 0, 0);
-  const thacianeMachineEnd = new Date(thacianeStart.getTime() + 75 * 60 * 1000);
-  const thacianeHangDeadline = new Date(thacianeMachineEnd.getTime() + 30 * 60 * 1000);
-  const thacianeDryEnd = new Date(thacianeHangDeadline.getTime() + 360 * 60 * 1000);
-  const thacianeRackRelease = new Date(thacianeDryEnd.getTime() + 60 * 60 * 1000);
-
-  // Seed 2: Pedro lavou roupas de academia no Varal 2
-  const pedroStart = new Date(now);
-  pedroStart.setHours(now.getHours() - 1, 30, 0, 0);
-  const pedroMachineEnd = new Date(pedroStart.getTime() + 45 * 60 * 1000);
-  const pedroHangDeadline = new Date(pedroMachineEnd.getTime() + 30 * 60 * 1000);
-  const pedroDryEnd = new Date(pedroHangDeadline.getTime() + 200 * 60 * 1000);
-  const pedroRackRelease = new Date(pedroDryEnd.getTime() + 60 * 60 * 1000);
-
-  // Seed 3: Wellington agendou para mais tarde hoje
+  // Seed: Wellington agendou para amanhã
   const wellingtonStart = new Date(now);
-  wellingtonStart.setHours(now.getHours() + 2, 0, 0, 0);
+  wellingtonStart.setDate(wellingtonStart.getDate() + 1);
+  wellingtonStart.setHours(11, 0, 0, 0);
   const wellingtonMachineEnd = new Date(wellingtonStart.getTime() + 75 * 60 * 1000);
   const wellingtonHangDeadline = new Date(wellingtonMachineEnd.getTime() + 30 * 60 * 1000);
-  const wellingtonDryEnd = new Date(wellingtonHangDeadline.getTime() + 380 * 60 * 1000);
+  const wellingtonDryEnd = new Date(wellingtonHangDeadline.getTime() + 540 * 60 * 1000);
   const wellingtonRackRelease = new Date(wellingtonDryEnd.getTime() + 60 * 60 * 1000);
 
   return [
     {
-      id: 'res-seed-1',
-      moradorId: 'thaciane',
-      loadTypeId: 'dia_a_dia',
-      startTime: thacianeStart.toISOString(),
-      machineEndTime: thacianeMachineEnd.toISOString(),
-      hangDeadline: thacianeHangDeadline.toISOString(),
-      dryEndTime: thacianeDryEnd.toISOString(),
-      rackReleaseTime: thacianeRackRelease.toISOString(),
-      assignedRacks: ['rack_1'],
-      weatherFactor: {
-        temperature: 28,
-        humidity: 62,
-        weatherCode: 1,
-        multiplier: 0.85,
-        conditionText: 'Sol & Brisa',
-        impactSummary: '28°C com 62% umidade • Secagem 15% mais rápida',
-      },
-      createdAt: thacianeStart.toISOString(),
-    },
-    {
-      id: 'res-seed-2',
-      moradorId: 'pedro',
-      loadTypeId: 'leve',
-      startTime: pedroStart.toISOString(),
-      machineEndTime: pedroMachineEnd.toISOString(),
-      hangDeadline: pedroHangDeadline.toISOString(),
-      dryEndTime: pedroDryEnd.toISOString(),
-      rackReleaseTime: pedroRackRelease.toISOString(),
-      assignedRacks: ['rack_2'],
-      weatherFactor: {
-        temperature: 29,
-        humidity: 60,
-        weatherCode: 1,
-        multiplier: 0.75,
-        conditionText: 'Calor de Copacabana',
-        impactSummary: '29°C com 60% umidade • Secagem 25% mais rápida',
-      },
-      createdAt: pedroStart.toISOString(),
-    },
-    {
-      id: 'res-seed-3',
+      id: 'res-seed-wellington',
       moradorId: 'wellington',
       loadTypeId: 'dia_a_dia',
       startTime: wellingtonStart.toISOString(),
@@ -148,14 +106,16 @@ export function generateInitialSeedReservations(): Reservation[] {
       hangDeadline: wellingtonHangDeadline.toISOString(),
       dryEndTime: wellingtonDryEnd.toISOString(),
       rackReleaseTime: wellingtonRackRelease.toISOString(),
-      assignedRacks: ['rack_2'],
+      assignedRacks: ['rack_1'],
       weatherFactor: {
-        temperature: 27,
-        humidity: 66,
+        temperature: 26,
+        humidity: 75,
         weatherCode: 2,
-        multiplier: 1.0,
-        conditionText: 'Sol com Nuvens',
-        impactSummary: '27°C agradável • Secagem no tempo de referência',
+        multiplier: 1.1,
+        conditionText: 'Sol & Nuvens em Copacabana',
+        impactSummary: '26°C com 75% umidade • Secagem regular no Varal 1',
+        windSpeed: 14,
+        cloudCover: 40,
       },
       createdAt: new Date().toISOString(),
     },
@@ -164,7 +124,7 @@ export function generateInitialSeedReservations(): Reservation[] {
 
 /**
  * Loads current reservations synchronously from localStorage cache.
- * Note: Never reseeds if user deleted all reservations!
+ * NOTE: Never resurrects deleted reservations! If the cache has [] or is initialized, returns [].
  */
 export function loadReservations(): Reservation[] {
   try {
@@ -172,7 +132,7 @@ export function loadReservations(): Reservation[] {
     if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed; // Even if empty array!
+        return parsed; // Returns parsed even if empty array []!
       }
     }
 
@@ -187,16 +147,11 @@ export function loadReservations(): Reservation[] {
   // First time ever: initialize with seed reservations
   const seeded = generateInitialSeedReservations();
   saveReservations(seeded);
-  try {
-    localStorage.setItem(STORAGE_KEY_INITIALIZED, 'true');
-  } catch {
-    // ignore
-  }
   return seeded;
 }
 
 /**
- * Saves reservations to local cache and broadcasts across tabs
+ * Saves reservations to local cache and broadcasts across tabs and in-memory listeners
  */
 export function saveReservations(reservations: Reservation[]): void {
   try {
@@ -209,31 +164,63 @@ export function saveReservations(reservations: Reservation[]): void {
 }
 
 /**
- * Fetches latest reservations from server API.
- * Updates local cache upon successful fetch.
+ * Helper to compare two reservation lists
+ */
+function areListsEqual(a: Reservation[], b: Reservation[]): boolean {
+  if (a.length !== b.length) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Fetches latest reservations from server API or cloud blob fallback.
+ * Updates local cache upon successful fetch and notifies UI if changed.
  */
 export async function fetchReservationsFromServer(): Promise<Reservation[]> {
+  // 1. Try Vercel Serverless Function /api/reservations
   try {
-    const res = await fetch('/api/reservations', {
-      headers: { Accept: 'application/json' },
+    const res = await fetch(`/api/reservations?t=${Date.now()}`, {
+      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache, no-store' },
     });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) {
-        saveReservations(data);
+        const current = loadReservations();
+        if (!areListsEqual(current, data)) {
+          saveReservations(data);
+        }
         return data;
       }
     }
-  } catch (err) {
-    console.warn('[Storage] Could not reach server, using local cache:', err);
+  } catch {
+    // Attempt fallback below
   }
+
+  // 2. Direct Cloud Blob CDN Fallback
+  try {
+    const blobRes = await fetch(`${CLOUD_BLOB_FALLBACK_URL}?t=${Date.now()}`, {
+      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache, no-store' },
+    });
+    if (blobRes.ok) {
+      const data = await blobRes.json();
+      if (Array.isArray(data)) {
+        const current = loadReservations();
+        if (!areListsEqual(current, data)) {
+          saveReservations(data);
+        }
+        return data;
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   return loadReservations();
 }
 
 /**
- * Adds a new reservation:
+ * Adds or updates a reservation:
  * 1. Optimistically updates local cache and broadcasts.
- * 2. Syncs with backend API.
+ * 2. Syncs with backend API & cloud blob.
  */
 export async function addReservation(reservation: Reservation): Promise<Reservation[]> {
   const current = loadReservations();
@@ -242,12 +229,11 @@ export async function addReservation(reservation: Reservation): Promise<Reservat
   );
   saveReservations(updated);
 
-  // Send to server in background
   try {
     const res = await fetch('/api/reservations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reservation),
+      body: JSON.stringify({ action: 'add', reservation }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -275,7 +261,7 @@ export async function updateReservation(reservation: Reservation): Promise<Reser
     const res = await fetch('/api/reservations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reservation),
+      body: JSON.stringify({ action: 'add', reservation }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -294,7 +280,7 @@ export async function updateReservation(reservation: Reservation): Promise<Reser
 /**
  * Permanently deletes a reservation:
  * 1. Optimistically removes from local cache and broadcasts.
- * 2. Deletes on server.
+ * 2. Deletes on server and cloud storage.
  */
 export async function deleteReservation(id: string): Promise<Reservation[]> {
   const current = loadReservations();
@@ -302,8 +288,10 @@ export async function deleteReservation(id: string): Promise<Reservation[]> {
   saveReservations(updated);
 
   try {
-    const res = await fetch(`/api/reservations/${encodeURIComponent(id)}`, {
+    const res = await fetch(`/api/reservations?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -338,8 +326,10 @@ export async function releaseReservationEarly(id: string): Promise<Reservation[]
   saveReservations(updated);
 
   try {
-    const res = await fetch(`/api/reservations/${encodeURIComponent(id)}/release`, {
+    const res = await fetch(`/api/reservations?id=${encodeURIComponent(id)}`, {
       method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'release', id }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -353,4 +343,55 @@ export async function releaseReservationEarly(id: string): Promise<Reservation[]
   }
 
   return updated;
+}
+
+/**
+ * Cross-device live polling and lifecycle listener setup.
+ * Polling every 4s ensures all roommates see additions & deletions instantly across PC and phone!
+ */
+let pollingInterval: any = null;
+
+export function startLiveCloudSync(): () => void {
+  // 1. Initial fetch from server
+  fetchReservationsFromServer();
+
+  // 2. Poll every 4 seconds
+  if (!pollingInterval && typeof window !== 'undefined') {
+    pollingInterval = setInterval(() => {
+      fetchReservationsFromServer();
+    }, 4000);
+  }
+
+  // 3. Sync immediately when tab regains focus or user unlocks mobile screen
+  const handleVisibility = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      fetchReservationsFromServer();
+    }
+  };
+
+  const handleFocus = () => {
+    fetchReservationsFromServer();
+  };
+
+  const handleOnline = () => {
+    fetchReservationsFromServer();
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibility);
+  }
+
+  return () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    }
+  };
 }

@@ -248,10 +248,47 @@ export function reservationsApiPlugin(): Plugin {
       return sendJson(res, 200, data);
     }
 
-    // 3. POST /api/reservations (Create new reservation)
+    // 3. POST /api/reservations (Flexible support: add, delete, release, setAll)
     if (req.method === 'POST' && (pathname === '/api/reservations' || pathname === '/api/reservations/')) {
       try {
-        const newReservation: Reservation = await readJsonBody(req);
+        const body: any = await readJsonBody(req);
+
+        // Delete action via POST
+        if (body?.action === 'delete' && body?.id) {
+          const current = loadReservations();
+          const updated = current.filter((r) => r.id !== body.id);
+          saveReservations(updated);
+          broadcast(updated);
+          return sendJson(res, 200, { success: true, deletedId: body.id, reservations: updated });
+        }
+
+        // Release early action via POST
+        if (body?.action === 'release' && body?.id) {
+          const current = loadReservations();
+          const now = new Date().toISOString();
+          const updated = current.map((r) => {
+            if (r.id === body.id) {
+              return {
+                ...r,
+                isCompletedEarly: true,
+                earlyReleasedAt: now,
+              };
+            }
+            return r;
+          });
+          saveReservations(updated);
+          broadcast(updated);
+          return sendJson(res, 200, { success: true, reservations: updated });
+        }
+
+        // SetAll action
+        if (body?.action === 'setAll' && Array.isArray(body?.reservations)) {
+          saveReservations(body.reservations);
+          broadcast(body.reservations);
+          return sendJson(res, 200, { success: true, reservations: body.reservations });
+        }
+
+        const newReservation: Reservation = body?.reservation || body;
         if (!newReservation || !newReservation.id) {
           return sendJson(res, 400, { error: 'Invalid reservation data' });
         }
@@ -287,8 +324,9 @@ export function reservationsApiPlugin(): Plugin {
 
     // 5. PATCH /api/reservations/:id/release (Release early)
     const releaseMatch = pathname.match(/^\/api\/reservations\/([^/]+)\/release\/?$/);
-    if (req.method === 'PATCH' && releaseMatch) {
-      const id = releaseMatch[1];
+    const queryId = parsedUrl.searchParams.get('id');
+    if (req.method === 'PATCH' && (releaseMatch || queryId)) {
+      const id = releaseMatch ? releaseMatch[1] : queryId;
       const current = loadReservations();
       const now = new Date().toISOString();
       const updated = current.map((r) => {
@@ -307,16 +345,18 @@ export function reservationsApiPlugin(): Plugin {
       return sendJson(res, 200, { success: true, reservations: updated });
     }
 
-    // 6. DELETE /api/reservations/:id (Delete reservation)
+    // 6. DELETE /api/reservations/:id or ?id=...
     const deleteMatch = pathname.match(/^\/api\/reservations\/([^/]+)\/?$/);
-    if (req.method === 'DELETE' && deleteMatch) {
-      const id = deleteMatch[1];
-      const current = loadReservations();
-      const updated = current.filter((r) => r.id !== id);
+    if (req.method === 'DELETE' && (deleteMatch || queryId)) {
+      const id = deleteMatch ? deleteMatch[1] : queryId;
+      if (id && id !== 'reservations') {
+        const current = loadReservations();
+        const updated = current.filter((r) => r.id !== id);
 
-      saveReservations(updated);
-      broadcast(updated);
-      return sendJson(res, 200, { success: true, deletedId: id, reservations: updated });
+        saveReservations(updated);
+        broadcast(updated);
+        return sendJson(res, 200, { success: true, deletedId: id, reservations: updated });
+      }
     }
 
     next();

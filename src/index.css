@@ -50,3 +50,16 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 }
+
+/* Modal vertical-only locking: completely eliminate horizontal sliding / "sambando na horizontal" */
+.modal-vertical-only {
+  touch-action: pan-y !important;
+  overflow-x: hidden !important;
+  overscroll-behavior-x: none !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-backdrop-lock {
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}

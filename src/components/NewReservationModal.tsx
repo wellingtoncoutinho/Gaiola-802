@@ -200,7 +200,7 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 touch-none modal-backdrop-lock overscroll-none"
       onClick={onClose}
     >
       <div
@@ -208,7 +208,7 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header - Fixed at top, always visible and reachable */}
-        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 z-10">
+        <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 z-10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#1B2A4A] text-[#FEF9C3] flex items-center justify-center p-1 shrink-0 shadow-xs">
               <GaiolaLogo className="w-full h-full" showChain={false} />
@@ -234,14 +234,14 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden w-full">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden touch-pan-y modal-vertical-only overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5 w-full min-w-0">
             {/* 1. Quem vai lavar? */}
-            <div>
+            <div className="w-full min-w-0">
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
               Quem vai lavar?
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2 w-full min-w-0">
               {ROOMMATES.map((m) => {
                 const isSelected = m.id === moradorId;
                 return (
@@ -249,19 +249,19 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
                     key={m.id}
                     type="button"
                     onClick={() => setMoradorId(m.id)}
-                    className={`py-2 px-1 rounded-xl border text-center transition-all ${
+                    className={`py-2 px-0.5 sm:px-1 rounded-xl border text-center transition-all min-w-0 w-full overflow-hidden ${
                       isSelected
                         ? 'border-zinc-900 dark:border-zinc-100 bg-zinc-50 dark:bg-zinc-800 shadow-xs'
                         : 'border-zinc-200/70 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
                     <div
-                      className="w-6 h-6 rounded-lg mx-auto flex items-center justify-center text-[10px] font-bold text-white mb-1 shadow-2xs"
+                      className="w-6 h-6 rounded-lg mx-auto flex items-center justify-center text-[10px] font-bold text-white mb-1 shadow-2xs shrink-0"
                       style={{ backgroundColor: m.color.hex }}
                     >
                       {m.avatarInitials}
                     </div>
-                    <div className="text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                    <div className="text-[10px] sm:text-[11px] font-semibold text-zinc-800 dark:text-zinc-200 truncate w-full px-0.5">
                       {m.name}
                     </div>
                   </button>
@@ -420,7 +420,7 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
               </div>
 
               {/* Atalhos Rápidos */}
-              <div className="flex items-center gap-1 text-[10px] font-medium self-start sm:self-center">
+              <div className="flex flex-wrap items-center gap-1 text-[10px] font-medium w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setSelectedRacks(['rack_1'])}
@@ -469,7 +469,7 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
             </div>
 
             {/* Cartões Interativos para Varal 1 e Varal 2 */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full min-w-0">
               {/* Varal 1 */}
               <button
                 type="button"

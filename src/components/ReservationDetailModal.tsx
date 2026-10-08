@@ -77,7 +77,7 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 touch-none modal-backdrop-lock overscroll-none"
       onClick={onClose}
     >
       <div
@@ -85,16 +85,16 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Fixed at top, always reachable */}
-        <div className="shrink-0 p-5 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between bg-white dark:bg-zinc-900 z-10">
+        <div className="shrink-0 p-4 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between bg-white dark:bg-zinc-900 z-10">
           <div className="flex items-center gap-3">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs"
+              className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs shrink-0"
               style={{ backgroundColor: morador.color.hex }}
             >
               {morador.avatarInitials}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                   {morador.name}
                 </h3>
@@ -119,7 +119,7 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
         </div>
 
         {/* Body content - Scrollable */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5 text-xs">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden touch-pan-y modal-vertical-only overscroll-contain p-4 sm:p-6 space-y-4 sm:space-y-5 text-xs w-full min-w-0">
           {/* Status highlight alert if waiting to hang or ready to collect */}
           {status.status === 'waiting_hang' && (
             <div className="p-3 rounded-xl bg-[#FEF9C3] border border-[#FDE68A] text-[#854D0E] font-medium">
