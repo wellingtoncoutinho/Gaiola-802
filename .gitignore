@@ -8,3 +8,6 @@ coverage/
 !.env.example
 dev-dist/
 .vercel/
+
+.vercel
+.env*
