@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -30,10 +32,21 @@
   background: rgba(108, 117, 125, 0.4);
 }
 
-/* iOS safe-area helpers */
+/* iOS safe-area helpers & mobile header clearance */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 .pt-safe {
   padding-top: env(safe-area-inset-top, 16px);
+}
+
+/* Mobile top clearance to prevent header from colliding with status bar, clock & battery */
+.mobile-header-spacing {
+  padding-top: calc(max(env(safe-area-inset-top, 0px), 16px) + 8px);
+}
+
+@media (min-width: 640px) {
+  .mobile-header-spacing {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }

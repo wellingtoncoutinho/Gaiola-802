@@ -1,4 +1,8 @@
-<?xml version="1.0" encoding="UTF-8"?>
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+
+const svgGaiolaContent = (rounded = true, opaqueBg = true) => `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -12,11 +16,11 @@
   </defs>
 
   <!-- Background -->
-  
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
-  <rect width="512" height="512" rx="112" fill="url(#innerGlow)" />
-  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="4" />
-  
+  ${opaqueBg ? `
+  <rect width="512" height="512" ${rounded ? 'rx="112"' : ''} fill="url(#bgGrad)" />
+  <rect width="512" height="512" ${rounded ? 'rx="112"' : ''} fill="url(#innerGlow)" />
+  ${rounded ? '<rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#FFFFFF" stroke-opacity="0.15" stroke-width="4" />' : ''}
+  ` : ''}
 
   <!-- Cage & Birds Group (centered at 256, 256, scaled 1.76) -->
   <g transform="translate(256, 256) scale(1.76) translate(-100, -198)" fill="none" stroke="#FEF9C3" stroke-linecap="round" stroke-linejoin="round">
@@ -60,4 +64,61 @@
       <path d="M 77 241 L 69 253 L 74 251 Z" />
     </g>
   </g>
-</svg>
+</svg>`;
+
+// Write public/icon.svg
+const iconSvg = svgGaiolaContent(true, true);
+fs.writeFileSync(path.resolve('public', 'icon.svg'), iconSvg, 'utf-8');
+console.log('Generated public/icon.svg');
+
+// Also write temp HTML files to render with headless Edge
+const createHtmlWrapper = (svgStr, size) => `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: ${size}px; height: ${size}px; overflow: hidden; background: transparent; }
+    svg { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  ${svgStr}
+</body>
+</html>`;
+
+const tempDir = process.env.TEMP || 'C:\\Windows\\Temp';
+const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+
+const renderSvgToPng = (svgStr, targetFile, size) => {
+  const tempHtml = path.join(tempDir, `render-${size}.html`);
+  const tempPng = path.join(tempDir, `render-${size}.png`);
+  fs.writeFileSync(tempHtml, createHtmlWrapper(svgStr, size), 'utf-8');
+
+  try {
+    const cmd = `"${edgePath}" --headless=new --disable-gpu --user-data-dir="${tempDir}\\edge-render-${size}" --screenshot="${tempPng}" --window-size=${size},${size} "file:///${tempHtml.replace(/\\/g, '/')}"`;
+    execSync(cmd, { stdio: 'pipe' });
+
+    if (fs.existsSync(tempPng)) {
+      fs.copyFileSync(tempPng, targetFile);
+      fs.unlinkSync(tempPng);
+      console.log(`Rendered ${targetFile} (${size}x${size})`);
+    } else {
+      console.error(`Failed to generate ${targetFile}`);
+    }
+  } catch (err) {
+    console.error(`Error rendering ${targetFile}:`, err.message);
+  } finally {
+    if (fs.existsSync(tempHtml)) fs.unlinkSync(tempHtml);
+  }
+};
+
+// 1. Apple Touch Icon (180x180 / 512x512 with solid square background)
+renderSvgToPng(svgGaiolaContent(false, true), path.resolve('public', 'apple-touch-icon.png'), 512);
+
+// 2. PWA 512x512
+renderSvgToPng(svgGaiolaContent(true, true), path.resolve('public', 'pwa-512x512.png'), 512);
+
+// 3. PWA 192x192
+renderSvgToPng(svgGaiolaContent(true, true), path.resolve('public', 'pwa-192x192.png'), 192);
+
+console.log('Icon generation complete!');

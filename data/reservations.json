@@ -1,0 +1,24 @@
+[
+  {
+    "id": "res-1791497191511-ng9c",
+    "moradorId": "wellington",
+    "loadTypeId": "dia_a_dia",
+    "startTime": "2026-10-09T11:00:00.000Z",
+    "machineEndTime": "2026-10-09T12:15:00.000Z",
+    "hangDeadline": "2026-10-09T12:45:00.000Z",
+    "dryEndTime": "2026-10-09T22:12:00.000Z",
+    "rackReleaseTime": "2026-10-09T23:12:00.000Z",
+    "assignedRacks": [
+      "rack_1"
+    ],
+    "weatherFactor": {
+      "temperature": 25,
+      "humidity": 86,
+      "weatherCode": 0,
+      "multiplier": 1.35,
+      "conditionText": "Alta Umidade ou Fresco",
+      "impactSummary": "25°C com 86% umidade • Secagem 35% mais lenta"
+    },
+    "createdAt": "2026-10-08T22:06:31.511Z"
+  }
+]

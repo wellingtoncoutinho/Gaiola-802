@@ -17,13 +17,32 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Gaiola 802" />
     
+    <!-- Favicon & Mobile Touch Icons (Gaiola 802) -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="shortcut icon" href="/icon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          const saved = localStorage.getItem('gaiola802_dark_mode');
+          if (saved === 'true') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-[#F8F9FA] text-[#1A1D20] antialiased selection:bg-[#FEF9C3] selection:text-[#1B2A4A]">
+  <body class="bg-[#F8F9FA] dark:bg-[#121316] text-[#1A1D20] dark:text-zinc-100 antialiased selection:bg-[#FEF9C3] selection:text-[#1B2A4A]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -65,7 +65,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               <span className="inline-flex items-center gap-1">
                 <Droplets className="w-3 h-3 text-sky-500" />
                 <span className="tabular-nums">{current.relativeHumidity}%</span> umidade
@@ -73,7 +73,12 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
               <span aria-hidden="true" className="text-zinc-300 dark:text-zinc-700">·</span>
               <span className="inline-flex items-center gap-1">
                 <Wind className="w-3 h-3 text-teal-500" />
-                <span className="tabular-nums">{current.windSpeed} km/h</span> brisa
+                <span className="tabular-nums">{current.windSpeed} km/h</span> brisa do mar
+              </span>
+              <span aria-hidden="true" className="text-zinc-300 dark:text-zinc-700">·</span>
+              <span className="inline-flex items-center gap-1">
+                <Cloud className="w-3 h-3 text-zinc-400" />
+                <span className="tabular-nums">{current.cloudCover ?? 30}%</span> nuvens
               </span>
             </div>
           </div>
@@ -89,7 +94,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
 
           <button
             onClick={() => setShowHourly(!showHourly)}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title={showHourly ? 'Ocultar previsão por hora' : 'Ver previsão por hora'}
             aria-label="Alternar previsão por hora"
           >
@@ -99,7 +104,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 cursor-pointer"
             title="Atualizar clima"
             aria-label="Atualizar clima"
           >
@@ -108,29 +113,36 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         </div>
       </div>
 
-      {/* Description text */}
-      <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        {dryingCondition.description}
+      {/* Description text & Coastal wind tip */}
+      <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 space-y-0.5">
+        <p>{dryingCondition.description}</p>
+        {dryingCondition.windTip && (
+          <p className="text-[11px] text-teal-700 dark:text-teal-300 font-medium flex items-center gap-1">
+            <Wind className="w-3 h-3 shrink-0" />
+            <span>{dryingCondition.windTip}</span>
+          </p>
+        )}
       </div>
 
       {/* Hourly drawer */}
       {showHourly && (
         <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
           <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-            Próximas horas em Copacabana
+            Próximas horas em Copacabana (Temperatura · Umidade · Vento)
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 text-center scrollbar-none">
-            {weather.hourly.time.slice(0, 12).map((timeStr, idx) => {
+            {weather.hourly.time.slice(0, 14).map((timeStr, idx) => {
               const time = new Date(timeStr);
               const temp = Math.round(weather.hourly.temperature_2m[idx]);
               const hum = Math.round(weather.hourly.relative_humidity_2m[idx]);
+              const wind = Math.round(weather.hourly.wind_speed_10m?.[idx] ?? 14);
               const code = weather.hourly.weathercode[idx];
               const isRainHour = code >= 51;
 
               return (
                 <div
                   key={timeStr}
-                  className="flex-shrink-0 min-w-[58px] p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800 text-xs"
+                  className="flex-shrink-0 min-w-[68px] p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800 text-xs space-y-0.5"
                 >
                   <div className="text-[11px] font-medium text-zinc-400 tabular-nums">
                     {time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -144,11 +156,14 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
                       <Cloud className="w-3.5 h-3.5 text-zinc-400" />
                     )}
                   </div>
-                  <div className="font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
-                    {temp}°
+                  <div className="font-bold text-zinc-800 dark:text-zinc-200 tabular-nums">
+                    {temp}°C
                   </div>
-                  <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">
-                    {hum}%
+                  <div className="text-[10px] text-sky-600 dark:text-sky-400 tabular-nums font-medium">
+                    {hum}% umid
+                  </div>
+                  <div className="text-[10px] text-teal-600 dark:text-teal-400 tabular-nums font-medium">
+                    {wind} km/h
                   </div>
                 </div>
               );

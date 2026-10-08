@@ -4,12 +4,8 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { GaiolaLogo } from './GaiolaLogo';
 
 export const PWAInstallButton: React.FC = () => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
-
-  if (isInstalled) {
-    return null;
-  }
+  return null;
+};
 
   // Chromium / Android / Desktop flow
   if (isInstallable) {

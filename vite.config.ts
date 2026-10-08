@@ -3,22 +3,24 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
+import {reservationsApiPlugin} from './src/server/reservationsPlugin.ts';
 
 export default defineConfig(() => {
   return {
     plugins: [
+      reservationsApiPlugin(),
       react(),
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
+        includeAssets: ['apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
           name: 'Gaiola 802 - Lavanderia & Varais',
           short_name: 'Gaiola 802',
           description: 'Gestão inteligente de lavanderia e varais no apê 802 em Copacabana, Rio de Janeiro.',
           theme_color: '#1B2A4A',
-          background_color: '#F8F9FA',
+          background_color: '#1B2A4A',
           display: 'standalone',
           start_url: '/',
           scope: '/',
@@ -36,8 +38,14 @@ export default defineConfig(() => {
               purpose: 'any',
             },
             {
-              src: '/icon.svg',
+              src: '/pwa-512x512.png',
               sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+            {
+              src: '/icon.svg',
+              sizes: 'any',
               type: 'image/svg+xml',
               purpose: 'any',
             },
@@ -54,7 +62,7 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

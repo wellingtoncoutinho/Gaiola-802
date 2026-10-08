@@ -45,6 +45,7 @@ export interface LoadTypeConfig {
   racksNeeded: 0 | 1 | 2; // 0 = sem varal (limpeza de máquina), 1 = 1 varal, 2 = 2 varais
   iconName: 'shirt' | 'zap' | 'feather' | 'bed' | 'sparkles' | 'wrench';
   isMaintenance?: boolean;
+  kwhConsumption?: number; // Consumo elétrico em kWh na Brastemp 12kg BWK12 (110V)
 }
 
 export type BookingStatus =
@@ -71,9 +72,13 @@ export interface Reservation {
     temperature: number;
     humidity: number;
     weatherCode: number;
+    windSpeed?: number;
+    cloudCover?: number;
     multiplier: number;
     conditionText: string;
     impactSummary: string;
+    windSummary?: string;
+    humiditySummary?: string;
   };
 
   isCompletedEarly?: boolean;
@@ -89,18 +94,27 @@ export interface WeatherData {
     weatherCode: number;
     isDay: number;
     windSpeed: number;
+    windGusts?: number;
+    cloudCover: number;
+    precipitationProbability?: number;
+    precipitation?: number;
   };
   hourly: {
     time: string[];
     temperature_2m: number[];
     relative_humidity_2m: number[];
     weathercode: number[];
+    wind_speed_10m: number[];
+    cloud_cover: number[];
+    precipitation_probability: number[];
+    precipitation: number[];
   };
   dryingCondition: {
     level: 'optimal' | 'normal' | 'slow' | 'rain_risk';
     title: string;
     description: string;
     multiplier: number;
+    windTip?: string;
   };
   updatedAt: string;
 }

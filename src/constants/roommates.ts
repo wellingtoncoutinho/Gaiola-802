@@ -83,6 +83,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     baseDryingHours: 4, // 4 h
     racksNeeded: 1,
     iconName: 'zap',
+    kwhConsumption: 0.28,
   },
   {
     id: 'dia_a_dia',
@@ -93,6 +94,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     baseDryingHours: 7, // 7 h
     racksNeeded: 1,
     iconName: 'shirt',
+    kwhConsumption: 0.372, // Padrão oficial INMETRO Brastemp BWK12 12kg
   },
   {
     id: 'pesada',
@@ -103,6 +105,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     baseDryingHours: 12, // 12 h
     racksNeeded: 1,
     iconName: 'feather',
+    kwhConsumption: 0.46,
   },
   {
     id: 'cama_edredom',
@@ -113,6 +116,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     baseDryingHours: 18, // 18 h
     racksNeeded: 2,
     iconName: 'bed',
+    kwhConsumption: 0.54,
   },
   // Opções discretas / de manutenção
   {
@@ -125,6 +129,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     racksNeeded: 1,
     iconName: 'sparkles',
     isMaintenance: true,
+    kwhConsumption: 0.22,
   },
   {
     id: 'limpeza_maquina',
@@ -136,6 +141,7 @@ export const LOAD_TYPES: LoadTypeConfig[] = [
     racksNeeded: 0,
     iconName: 'wrench',
     isMaintenance: true,
+    kwhConsumption: 0.32,
   },
 ];
 

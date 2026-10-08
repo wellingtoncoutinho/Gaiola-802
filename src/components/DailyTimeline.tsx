@@ -209,7 +209,10 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({
                 return (
                   <div
                     key={`m-${b.id}`}
-                    onClick={() => onSelectReservation(b)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectReservation(b);
+                    }}
                     style={style}
                     className="absolute top-1 bottom-1 z-10 px-2 py-1 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] hover:z-20 shadow-xs flex flex-col justify-center overflow-hidden"
                     title={`Máquina: ${morador.name} (${bStart.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${bMachineEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`}
@@ -268,7 +271,10 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({
                   return (
                     <div
                       key={`v1-${b.id}`}
-                      onClick={() => onSelectReservation(b)}
+                      onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectReservation(b);
+                    }}
                       style={style}
                       className="absolute top-1 bottom-1 z-10 px-2 py-1 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] hover:z-20 shadow-xs flex flex-col justify-center overflow-hidden"
                       title={`Varal 1: ${morador.name} (Até ${bRackEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`}
@@ -327,7 +333,10 @@ export const DailyTimeline: React.FC<DailyTimelineProps> = ({
                   return (
                     <div
                       key={`v2-${b.id}`}
-                      onClick={() => onSelectReservation(b)}
+                      onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectReservation(b);
+                    }}
                       style={style}
                       className="absolute top-1 bottom-1 z-10 px-2 py-1 rounded-lg border cursor-pointer transition-all hover:scale-[1.01] hover:z-20 shadow-xs flex flex-col justify-center overflow-hidden"
                       title={`Varal 2: ${morador.name} (Até ${bRackEnd.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`}

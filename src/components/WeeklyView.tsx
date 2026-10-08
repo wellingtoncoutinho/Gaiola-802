@@ -154,7 +154,10 @@ export const WeeklyView: React.FC<WeeklyViewProps> = ({
                     return (
                       <div
                         key={b.id}
-                        onClick={() => onSelectReservation(b)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectReservation(b);
+                        }}
                         className="p-2 rounded-lg border text-left cursor-pointer transition-all hover:scale-[1.02] shadow-2xs"
                         style={{
                           backgroundColor: `${morador.color.hex}14`,

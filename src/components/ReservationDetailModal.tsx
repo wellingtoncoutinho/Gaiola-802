@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Share2, CheckCheck, Trash2, Calendar, Clock, Droplets, Sun, Wind, ExternalLink, Check } from 'lucide-react';
 import { LOAD_TYPES, ROOMMATES, BUFFER_HANG_MINUTES, BUFFER_COLLECT_MINUTES } from '../constants/roommates';
 import { Reservation } from '../types';
@@ -19,6 +19,16 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
   onDeleteReservation,
 }) => {
   const [copied, setCopied] = useState(false);
+
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!reservation) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [reservation, onClose]);
 
   if (!reservation) return null;
 
@@ -66,10 +76,16 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
       status.status === 'ready_to_collect');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden my-6">
-        {/* Header */}
-        <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[90vh] flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header - Fixed at top, always reachable */}
+        <div className="shrink-0 p-5 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-start justify-between bg-white dark:bg-zinc-900 z-10">
           <div className="flex items-center gap-3">
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm text-white shadow-xs"
@@ -92,15 +108,18 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Fechar"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body content */}
-        <div className="p-6 space-y-5 text-xs">
+        {/* Body content - Scrollable */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5 text-xs">
           {/* Status highlight alert if waiting to hang or ready to collect */}
           {status.status === 'waiting_hang' && (
             <div className="p-3 rounded-xl bg-[#FEF9C3] border border-[#FDE68A] text-[#854D0E] font-medium">
@@ -255,24 +274,26 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 px-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+        {/* Footer Actions - Fixed at bottom, always visible */}
+        <div className="shrink-0 p-3.5 px-5 sm:px-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/90 flex items-center justify-between z-10">
           <button
+            type="button"
             onClick={() => {
               if (confirm('Tem certeza que deseja cancelar esta reserva?')) {
                 onDeleteReservation(reservation.id);
                 onClose();
               }
             }}
-            className="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Cancelar reserva</span>
           </button>
 
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 transition-colors"
+            className="px-4 py-2 text-xs font-semibold rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             Fechar
           </button>

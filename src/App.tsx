@@ -24,6 +24,7 @@ import { ReservationList } from './components/ReservationList';
 import { NewReservationModal } from './components/NewReservationModal';
 import { ReservationDetailModal } from './components/ReservationDetailModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { AdminDashboard } from './components/AdminDashboard';
 import { ROOMMATES } from './constants/roommates';
 import { MoradorId, Reservation, WeatherData } from './types';
 import { fetchCopacabanaWeather } from './services/weatherService';
@@ -34,8 +35,25 @@ import {
   addReservation,
   deleteReservation,
   releaseReservationEarly,
+  fetchReservationsFromServer,
+  subscribeToSync,
 } from './services/storageService';
 import { getReservationStatus } from './utils/statusHelper';
+
+function checkIsAdminRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  const full = (path + hash).toLowerCase();
+
+  return (
+    full.includes('admin/gaiola-802.vercel.app') ||
+    path.startsWith('/admin/gaiola-802.vercel.app') ||
+    path.startsWith('/admin') ||
+    hash.startsWith('#/admin') ||
+    hash.startsWith('#admin')
+  );
+}
 
 export default function App() {
   // 1. Theme State
@@ -52,13 +70,36 @@ export default function App() {
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
     }
     localStorage.setItem('gaiola802_dark_mode', String(isDark));
   }, [isDark]);
 
   const toggleDark = () => setIsDark((prev) => !prev);
+
+  // Secret Admin Route State (no public button/link)
+  const [isAdminView, setIsAdminView] = useState<boolean>(checkIsAdminRoute);
+
+  useEffect(() => {
+    const handleUrlChange = () => {
+      setIsAdminView(checkIsAdminRoute());
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    window.addEventListener('hashchange', handleUrlChange);
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      window.removeEventListener('hashchange', handleUrlChange);
+    };
+  }, []);
+
+  const handleBackToApp = () => {
+    window.history.pushState({}, '', '/');
+    setIsAdminView(false);
+  };
 
   // 2. Active Morador State
   const [activeMoradorId, setMoradorIdState] = useState<MoradorId>(getActiveMoradorId);
@@ -85,6 +126,64 @@ export default function App() {
 
   // 5. Reservations State
   const [reservations, setReservations] = useState<Reservation[]>(loadReservations);
+
+  // Synchronize reservations with server API and other open tabs / devices
+  useEffect(() => {
+    // 1. Initial fetch from server
+    fetchReservationsFromServer().then((data) => {
+      if (Array.isArray(data)) {
+        setReservations(data);
+      }
+    });
+
+    // 2. Cross-tab sync on same device
+    const unsubscribeSync = subscribeToSync((synced) => {
+      setReservations(synced);
+    });
+
+    // 3. Server-Sent Events (SSE) for instant cross-device sync (e.g. phone vs PC)
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/reservations/events');
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data)) {
+            setReservations(data);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      };
+      eventSource.onerror = () => {
+        // SSE reconnects automatically
+      };
+    } catch {
+      // EventSource fallback
+    }
+
+    // 4. Polling fallback every 8 seconds
+    const pollInterval = setInterval(() => {
+      fetchReservationsFromServer().then((data) => {
+        if (Array.isArray(data)) {
+          setReservations((prev) => {
+            if (JSON.stringify(prev) !== JSON.stringify(data)) {
+              return data;
+            }
+            return prev;
+          });
+        }
+      });
+    }, 8000);
+
+    return () => {
+      unsubscribeSync();
+      if (eventSource) {
+        eventSource.close();
+      }
+      clearInterval(pollInterval);
+    };
+  }, []);
 
   // 6. Weather State
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -114,19 +213,32 @@ export default function App() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
   // Handlers
-  const handleCreateReservation = (newRes: Reservation) => {
-    const updated = addReservation(newRes);
-    setReservations(updated);
+  const handleCreateReservation = async (newRes: Reservation) => {
+    // Optimistic local state update
+    setReservations((prev) => {
+      const updated = [...prev.filter((r) => r.id !== newRes.id), newRes].sort(
+        (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+      );
+      return updated;
+    });
+    const result = await addReservation(newRes);
+    setReservations(result);
   };
 
-  const handleReleaseEarly = (id: string) => {
-    const updated = releaseReservationEarly(id);
-    setReservations(updated);
+  const handleReleaseEarly = async (id: string) => {
+    const now = new Date().toISOString();
+    setReservations((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, isCompletedEarly: true, earlyReleasedAt: now } : r))
+    );
+    const result = await releaseReservationEarly(id);
+    setReservations(result);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = deleteReservation(id);
-    setReservations(updated);
+  const handleDelete = async (id: string) => {
+    // Immediately remove from current state so UI updates with no latency
+    setReservations((prev) => prev.filter((r) => r.id !== id));
+    const result = await deleteReservation(id);
+    setReservations(result);
   };
 
   // Compute Current Instant Resource Status (Machine, Rack 1, Rack 2)
@@ -197,6 +309,17 @@ export default function App() {
       rack2: rack2Occupant,
     };
   }, [reservations]);
+
+  if (isAdminView) {
+    return (
+      <AdminDashboard
+        reservations={reservations}
+        onBackToApp={handleBackToApp}
+        isDark={isDark}
+        onToggleDark={toggleDark}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#121316] text-[#1A1D20] dark:text-zinc-100 flex flex-col transition-colors pb-24 md:pb-12">

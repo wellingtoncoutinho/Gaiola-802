@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { User, ChevronDown, Check, Plus, Moon, Sun } from 'lucide-react';
 import { ROOMMATES } from '../constants/roommates';
 import { MoradorId } from '../types';
-import { PWAInstallButton } from './PWAInstallButton';
 import { GaiolaLogo } from './GaiolaLogo';
 
 interface HeaderProps {
@@ -28,8 +27,8 @@ export const Header: React.FC<HeaderProps> = ({
   const activeMorador = ROOMMATES.find((m) => m.id === activeMoradorId) || ROOMMATES[0];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#1B2A4A] text-white shadow-xs border-b border-[#23355C]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-40 bg-[#1B2A4A] text-white shadow-xs border-b border-[#23355C] mobile-header-spacing transition-all">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 min-h-16 py-2.5 sm:py-0 flex items-center justify-between gap-2 sm:gap-4">
         {/* Zone 1: Wordmark & Brand mark com Logo da Gaiola */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
@@ -83,9 +82,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Zone 3: Actions + User Selector */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* PWA Install Button */}
-          <PWAInstallButton />
-
           {/* Dark mode toggle */}
           <button
             onClick={onToggleDark}

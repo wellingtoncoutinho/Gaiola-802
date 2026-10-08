@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Calendar, Clock, AlertCircle, CheckCircle2, Wind, Shirt, Zap, Bed, Sparkles, Wrench, ChevronDown, ArrowRight, Check } from 'lucide-react';
+import { X, Calendar, Clock, AlertCircle, CheckCircle2, Wind, Shirt, Zap, Bed, Sparkles, Wrench, ChevronDown, ArrowRight, Check, Droplets, Sun, Cloud, CloudRain } from 'lucide-react';
 import { LOAD_TYPES, ROOMMATES, BUFFER_HANG_MINUTES, BUFFER_COLLECT_MINUTES } from '../constants/roommates';
 import { LoadTypeId, MoradorId, Reservation, WeatherData } from '../types';
 import {
@@ -34,6 +34,16 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
   // Load type selection
   const [loadTypeId, setLoadTypeId] = useState<LoadTypeId>('dia_a_dia');
   const [showMaintenance, setShowMaintenance] = useState(false);
+
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Date and Time (default to today rounded to next 30 or next hour)
   const defaultDateTime = useMemo(() => {
@@ -99,9 +109,9 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
     return isNaN(d.getTime()) ? new Date() : d;
   }, [dateStr, timeStr]);
 
-  // Schedule timings with weather impact
+  // Schedule timings with dynamic Copacabana weather impact (temp, humidity, wind, clouds)
   const timings = useMemo(() => {
-    const calc = calculateScheduleTimings(targetStartTime, loadTypeId, weather);
+    const calc = calculateScheduleTimings(targetStartTime, loadTypeId, weather, selectedRacks);
     if (selectedRacks.length === 0) {
       return {
         ...calc,
@@ -112,7 +122,7 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
       };
     }
     return calc;
-  }, [targetStartTime, loadTypeId, weather, selectedRacks.length]);
+  }, [targetStartTime, loadTypeId, weather, selectedRacks]);
 
   // Check rack availability for auto-suggestion
   const availableRacks = useMemo(() => {
@@ -189,10 +199,16 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
   const maintenanceLoads = LOAD_TYPES.filter((t) => t.isMaintenance);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in duration-150">
-      <div className="w-full max-w-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden my-6">
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-xl max-h-[92vh] sm:max-h-[90vh] flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header - Fixed at top, always visible and reachable */}
+        <div className="shrink-0 px-5 sm:px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 z-10">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#1B2A4A] text-[#FEF9C3] flex items-center justify-center p-1 shrink-0 shadow-xs">
               <GaiolaLogo className="w-full h-full" showChain={false} />
@@ -207,16 +223,21 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            title="Fechar"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* 1. Quem vai lavar? */}
-          <div>
+        {/* Modal Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
+            {/* 1. Quem vai lavar? */}
+            <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
               Quem vai lavar?
             </label>
@@ -547,42 +568,184 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
             </div>
           </div>
 
-          {/* 5. Real-Time Calculation Preview Banner */}
-          <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 p-3.5 space-y-2 text-xs">
-            <div className="flex items-center justify-between text-zinc-500 font-medium">
-              <span>Término da Máquina:</span>
-              <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                {timings.machineEndTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          {/* 5. Previsão do Clima & Cálculo Dinâmico de Secagem */}
+          <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-800 p-4 space-y-3 text-xs">
+            {/* Header da Previsão */}
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-200/60 dark:border-zinc-700/60">
+              <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100">
+                <Sun className="w-4 h-4 text-amber-500" />
+                <span>Previsão em Copacabana ao estender no varal</span>
+                <span className="text-[11px] font-mono text-zinc-400 font-normal">
+                  (~{timings.hangDeadline.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                Em tempo real
               </span>
             </div>
 
-            {selectedRacks.length > 0 ? (
-              <div className="flex items-center justify-between text-zinc-500 font-medium">
-                <span>Secagem estimada + Liberação:</span>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
-                    {timings.rackReleaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {timings.rackReleaseTime.toDateString() !== targetStartTime.toDateString() && (
-                    <span className="text-[10px] text-zinc-400 ml-1">
-                      ({timings.rackReleaseTime.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
-                    </span>
-                  )}
+            {/* 4 Mini Cards de Métricas Climáticas da Hora */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* Temperatura */}
+              <div className="p-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold flex items-center gap-1">
+                  <Sun className="w-3 h-3 text-amber-500" />
+                  <span>Temperatura</span>
+                </div>
+                <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 tabular-nums">
+                  {timings.weatherFactor.temperature}°C
+                </div>
+                <div className="text-[9px] text-zinc-400">
+                  {timings.weatherFactor.temperature >= 28 ? 'Calor do Rio' : 'Ameno'}
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-                <span>Varais de Secagem:</span>
-                <span>Desocupados (100% livres para outros moradores)</span>
+
+              {/* Umidade Relativa */}
+              <div className={`p-2 rounded-lg border ${
+                timings.weatherFactor.humidity >= 80
+                  ? 'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50'
+                  : 'bg-white dark:bg-zinc-800 border-zinc-200/60 dark:border-zinc-700/60'
+              }`}>
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold flex items-center gap-1">
+                  <Droplets className="w-3 h-3 text-sky-500" />
+                  <span>Umidade</span>
+                </div>
+                <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 tabular-nums">
+                  {timings.weatherFactor.humidity}%
+                </div>
+                <div className={`text-[9px] font-medium ${
+                  timings.weatherFactor.humidity >= 80
+                    ? 'text-amber-700 dark:text-amber-400 font-semibold'
+                    : 'text-zinc-400'
+                }`}>
+                  {timings.weatherFactor.humidity >= 85
+                    ? 'Alta umidade'
+                    : timings.weatherFactor.humidity <= 60
+                    ? 'Ar seco'
+                    : 'Normal'}
+                </div>
+              </div>
+
+              {/* Vento de Copacabana */}
+              <div className="p-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold flex items-center gap-1">
+                  <Wind className="w-3 h-3 text-teal-500" />
+                  <span>Vento</span>
+                </div>
+                <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mt-0.5 tabular-nums">
+                  {timings.weatherFactor.windSpeed} km/h
+                </div>
+                <div className={`text-[9px] font-medium ${
+                  timings.weatherFactor.windSpeed >= 16
+                    ? 'text-teal-600 dark:text-teal-400 font-semibold'
+                    : timings.weatherFactor.windSpeed < 7
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-zinc-400'
+                }`}>
+                  {timings.weatherFactor.windSpeed >= 20
+                    ? 'Vento forte'
+                    : timings.weatherFactor.windSpeed >= 12
+                    ? 'Brisa do mar'
+                    : 'Vento fraco'}
+                </div>
+              </div>
+
+              {/* Céu / Nuvens */}
+              <div className="p-2 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60">
+                <div className="text-[10px] text-zinc-400 uppercase font-semibold flex items-center gap-1">
+                  <Cloud className="w-3 h-3 text-zinc-400" />
+                  <span>Céu</span>
+                </div>
+                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-1 truncate">
+                  {timings.weatherFactor.conditionText}
+                </div>
+                <div className="text-[9px] text-zinc-400">
+                  {timings.weatherFactor.cloudCover !== undefined
+                    ? `${timings.weatherFactor.cloudCover}% nuvens`
+                    : 'Copacabana'}
+                </div>
+              </div>
+            </div>
+
+            {/* Cálculo de Secagem e Comparativo */}
+            {selectedRacks.length > 0 && (
+              <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500">Secagem estimada no varal:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="line-through text-zinc-400 text-[11px] tabular-nums">
+                      {currentLoad.baseDryingHours}h (base)
+                    </span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 text-sm tabular-nums">
+                      ~{Math.floor(timings.calculatedDryingMinutes / 60)}h
+                      {timings.calculatedDryingMinutes % 60 > 0 ? `${timings.calculatedDryingMinutes % 60}m` : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Badge de Impacto */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-400">Ajuste climático:</span>
+                  <span className={`font-semibold ${
+                    timings.weatherFactor.multiplier <= 0.90
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : timings.weatherFactor.multiplier >= 1.15
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-zinc-600 dark:text-zinc-400'
+                  }`}>
+                    {timings.weatherFactor.multiplier <= 0.90
+                      ? `⚡ ${Math.round((1 - timings.weatherFactor.multiplier) * 100)}% mais rápida (calor & vento)`
+                      : timings.weatherFactor.multiplier >= 1.15
+                      ? `⏳ ${Math.round((timings.weatherFactor.multiplier - 1) * 100)}% mais lenta (umidade/pouco vento)`
+                      : '✓ Ritmo regular de secagem'}
+                  </span>
+                </div>
               </div>
             )}
 
-            <div className="pt-2 border-t border-zinc-200/50 dark:border-zinc-700/50 flex items-center justify-between text-[11px]">
-              <span className="text-zinc-400">Impacto Estimado:</span>
-              <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                {timings.weatherFactor.impactSummary}
-              </span>
+            {/* Horários Principais */}
+            <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-700/60 space-y-1 text-[11px]">
+              <div className="flex items-center justify-between text-zinc-500">
+                <span>Término da Máquina (+30m tolerância):</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">
+                  {timings.machineEndTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+
+              {selectedRacks.length > 0 ? (
+                <div className="flex items-center justify-between text-zinc-500">
+                  <span>Varal 100% liberado (+1h tolerância):</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    ~{timings.rackReleaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {timings.rackReleaseTime.toDateString() !== targetStartTime.toDateString() && (
+                      <span className="text-[10px] text-zinc-400 ml-1">
+                        ({timings.rackReleaseTime.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✓ Sem uso de varal (apenas máquina de lavar)
+                </div>
+              )}
             </div>
+
+            {/* Dica de Vento & Varal em Copacabana */}
+            {selectedRacks.length > 0 && (
+              <div className="text-[10px] text-zinc-500 dark:text-zinc-400 bg-white/70 dark:bg-zinc-800/80 p-2 rounded-lg border border-zinc-200/50 dark:border-zinc-700/50 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>
+                  {selectedRacks.includes('rack_1') && timings.weatherFactor.windSpeed >= 12
+                    ? 'O Varal 1 (Janela) aproveita a brisa de Copacabana e acelera a evaporação!'
+                    : timings.weatherFactor.humidity >= 80
+                    ? `Umidade alta no litoral (${timings.weatherFactor.humidity}%): estenda as roupas bem espaçadas para circular ar.`
+                    : timings.weatherFactor.windSpeed < 8
+                    ? 'Pouco vento neste horário: o varal interno dependerá mais do calor do que da ventilação.'
+                    : 'Condições favoráveis para secagem em Copacabana.'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 6. Conflict Notification & Smart Suggestion */}
@@ -622,21 +785,24 @@ export const NewReservationModal: React.FC<NewReservationModalProps> = ({
             </div>
           )}
 
-          {/* Modal Actions */}
-          <div className="pt-2 flex items-center justify-end gap-2">
+          </div>
+
+          {/* Modal Actions Footer - Fixed at bottom, always visible and reachable */}
+          <div className="shrink-0 px-5 sm:px-6 py-3.5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/90 flex items-center justify-end gap-2.5 z-10">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors"
+              className="px-4 py-2 text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={conflict.hasConflict}
-              className="px-5 py-2 text-xs font-semibold rounded-xl bg-[#1B2A4A] text-white hover:bg-[#15223c] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
+              className="px-5 py-2 text-xs font-semibold rounded-xl bg-[#1B2A4A] text-white hover:bg-[#15223c] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              Confirmar Agendamento
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>Confirmar Agendamento</span>
             </button>
           </div>
         </form>

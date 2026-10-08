@@ -38,7 +38,8 @@ export interface CalculationResult {
 export function calculateScheduleTimings(
   startTime: Date,
   loadTypeId: LoadTypeId,
-  weather: WeatherData | null
+  weather: WeatherData | null,
+  assignedRacks?: ('rack_1' | 'rack_2')[]
 ): CalculationResult {
   const loadConfig = LOAD_TYPES.find((t) => t.id === loadTypeId) || LOAD_TYPES[1];
 
@@ -62,16 +63,20 @@ export function calculateScheduleTimings(
         temperature: weather?.current?.temperature ?? 26,
         humidity: weather?.current?.relativeHumidity ?? 65,
         weatherCode: weather?.current?.weatherCode ?? 1,
+        windSpeed: weather?.current?.windSpeed ?? 15,
+        cloudCover: weather?.current?.cloudCover ?? 30,
         multiplier: 1.0,
         conditionText: 'Auto-higienização',
         impactSummary: 'Ciclo interno da lavadora • Não utiliza varal',
+        windSummary: 'Não aplicável',
+        humiditySummary: 'Não aplicável',
       },
     };
   }
 
   // Forecast for when clothes are actually put on rack (startTime + cycleMinutes)
   const hangTime = new Date(startTime.getTime() + cycleMinutes * 60 * 1000);
-  const weatherFactor = getForecastForTime(weather, hangTime);
+  const weatherFactor = getForecastForTime(weather, hangTime, assignedRacks);
 
   // Apply climate multiplier to drying time
   const calculatedDryingMinutes = Math.round(baseDryingMinutes * weatherFactor.multiplier);
@@ -119,7 +124,7 @@ export function validateBookingConflicts(
   currentBookingId?: string,
   weather?: WeatherData | null
 ): TimeSlotConflict {
-  const timings = calculateScheduleTimings(newStart, loadTypeId, weather || null);
+  const timings = calculateScheduleTimings(newStart, loadTypeId, weather || null, targetRacks);
   const activeBookings = existingBookings.filter(
     (b) => b.id !== currentBookingId && !b.isCompletedEarly
   );
