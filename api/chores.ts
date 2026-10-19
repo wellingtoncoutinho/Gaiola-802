@@ -34,7 +34,7 @@ const DEFAULT_CHORES_DATA: ChoresData = {
     templateName: '',
     testMode: false,
   },
-  rotationOffset: 0,
+  rotationOffset: 4,
   updatedAt: new Date().toISOString(),
 };
 

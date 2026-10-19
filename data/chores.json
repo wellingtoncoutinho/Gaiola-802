@@ -11,7 +11,16 @@
     "bia": "",
     "gabriel": ""
   },
-  "trashRecords": {},
+  "trashRecords": {
+    "2026-10-19": {
+      "date": "2026-10-19",
+      "moradorId": "pedro",
+      "room": "Quarto 1",
+      "confirmed": true,
+      "confirmedAt": "2026-10-19T23:10:48.958Z",
+      "confirmedBy": "Wellington"
+    }
+  },
   "cleaningRecords": {},
   "metaConfig": {
     "phoneNumberId": "",
@@ -20,7 +29,7 @@
     "templateName": "",
     "testMode": false
   },
-  "rotationOffset": 0,
-  "updatedAt": "2026-10-19T22:35:45.003Z",
+  "rotationOffset": 4,
+  "updatedAt": "2026-10-19T23:10:48.960Z",
   "action": "save_settings"
 }

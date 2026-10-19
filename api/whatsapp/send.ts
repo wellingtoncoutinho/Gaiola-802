@@ -109,57 +109,20 @@ export default async function handler(req: any, res: any) {
 
     const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-    let payload: any;
-    if (buttonTitle && replyId) {
-      payload = {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: cleanPhone,
-        type: 'interactive',
-        interactive: {
-          type: 'button',
-          body: {
-            text: text,
-          },
-          action: {
-            buttons: [
-              {
-                type: 'reply',
-                reply: {
-                  id: replyId,
-                  title: buttonTitle,
-                },
-              },
-            ],
-          },
-        },
-      };
-    } else {
-      payload = {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: cleanPhone,
-        type: 'text',
-        text: {
-          preview_url: false,
-          body: text,
-        },
-      };
-    }
+    const moradorNames: Record<string, string> = {
+      pedro: 'Pedro',
+      yan: 'Yan',
+      wellington: 'Wellington',
+      fabio: 'Fabio',
+      thaciane: 'Thaciane',
+    };
+    const displayName = moradorNames[(moradorId || '').toLowerCase()] || moradorId || 'Morador';
 
-    let metaRes = await fetch(metaApiUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    let metaRes: any;
+    let metaData: any;
 
-    let metaData = await metaRes.json();
-
-    // Fallback 1: Try approved template if interactive message fails (required outside 24h window)
-    if (!metaRes.ok && taskType) {
+    // Strategy 1: If taskType is provided, try approved official template first
+    if (taskType) {
       const templateName = taskType === 'trash' ? 'gaiola_aviso_lixo' : 'gaiola_aviso_limpeza';
       const templatePayload = {
         messaging_product: 'whatsapp',
@@ -172,7 +135,7 @@ export default async function handler(req: any, res: any) {
           components: [
             {
               type: 'body',
-              parameters: [{ type: 'text', text: moradorId || 'Morador' }],
+              parameters: [{ type: 'text', text: displayName }],
             },
           ],
         },
@@ -187,10 +150,65 @@ export default async function handler(req: any, res: any) {
         body: JSON.stringify(templatePayload),
       });
 
-      if (templateRes.ok) {
-        metaRes = templateRes;
-        metaData = await templateRes.json();
+      metaRes = templateRes;
+      metaData = await templateRes.json();
+    }
+
+    // Fallback 1: Try interactive button (works if inside active 24h window or if no template)
+    if (!metaRes || !metaRes.ok) {
+      if (taskType) {
+        console.warn('[Meta WhatsApp API] Template send failed or not ready, trying interactive button...', metaData);
       }
+
+      let payload: any;
+      if (buttonTitle && replyId) {
+        payload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanPhone,
+          type: 'interactive',
+          interactive: {
+            type: 'button',
+            body: {
+              text: text,
+            },
+            action: {
+              buttons: [
+                {
+                  type: 'reply',
+                  reply: {
+                    id: replyId,
+                    title: buttonTitle,
+                  },
+                },
+              ],
+            },
+          },
+        };
+      } else {
+        payload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanPhone,
+          type: 'text',
+          text: {
+            preview_url: false,
+            body: text,
+          },
+        };
+      }
+
+      const interactiveRes = await fetch(metaApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      metaRes = interactiveRes;
+      metaData = await interactiveRes.json();
     }
 
     // Fallback 2: Plain text with reply instructions

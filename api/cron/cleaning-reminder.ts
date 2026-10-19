@@ -92,27 +92,21 @@ Checklist:
     if (phoneNumberId && accessToken && cleanPhone) {
       const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-      const interactivePayload = {
+      // Strategy 1: Send official template (works both inside and outside 24h window)
+      const templatePayload = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',
         to: cleanPhone,
-        type: 'interactive',
-        interactive: {
-          type: 'button',
-          body: {
-            text: messageText,
-          },
-          action: {
-            buttons: [
-              {
-                type: 'reply',
-                reply: {
-                  id: buttonId,
-                  title: buttonTitle,
-                },
-              },
-            ],
-          },
+        type: 'template',
+        template: {
+          name: 'gaiola_aviso_limpeza',
+          language: { code: 'pt_BR' },
+          components: [
+            {
+              type: 'body',
+              parameters: [{ type: 'text', text: assigned.name }],
+            },
+          ],
         },
       };
 
@@ -122,42 +116,50 @@ Checklist:
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(interactivePayload),
+        body: JSON.stringify(templatePayload),
       });
 
       metaResult = await metaRes.json();
 
-      // Fallback 1: Try official template gaiola_aviso_limpeza
+      // Fallback 1: Try interactive button (works if inside active 24h window)
       if (!metaRes.ok) {
-        const templatePayload = {
+        console.warn('[Cleaning Cron] Template send failed, trying interactive button...', metaResult);
+        const interactivePayload = {
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
           to: cleanPhone,
-          type: 'template',
-          template: {
-            name: 'gaiola_aviso_limpeza',
-            language: { code: 'pt_BR' },
-            components: [
-              {
-                type: 'body',
-                parameters: [{ type: 'text', text: assigned.name }],
-              },
-            ],
+          type: 'interactive',
+          interactive: {
+            type: 'button',
+            body: {
+              text: messageText,
+            },
+            action: {
+              buttons: [
+                {
+                  type: 'reply',
+                  reply: {
+                    id: buttonId,
+                    title: buttonTitle,
+                  },
+                },
+              ],
+            },
           },
         };
 
-        const templateRes = await fetch(metaApiUrl, {
+        const interactiveRes = await fetch(metaApiUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(templatePayload),
+          body: JSON.stringify(interactivePayload),
         });
 
-        if (templateRes.ok) {
-          metaRes = templateRes;
-          metaResult = await templateRes.json();
+        if (interactiveRes.ok) {
+          metaRes = interactiveRes;
+          metaResult = await interactiveRes.json();
         }
       }
 
