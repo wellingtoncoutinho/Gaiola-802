@@ -28,9 +28,9 @@ const DEFAULT_CHORES_DATA: ChoresData = {
   trashRecords: {},
   cleaningRecords: {},
   metaConfig: {
-    phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID || '',
+    phoneNumberId: process.env.META_WA_PHONE_NUMBER_ID || '1261779623696198',
     accessToken: process.env.META_WA_ACCESS_TOKEN || '',
-    businessAccountId: process.env.META_WA_BUSINESS_ACCOUNT_ID || '',
+    businessAccountId: process.env.META_WA_BUSINESS_ACCOUNT_ID || '1604487048142695',
     templateName: '',
     testMode: false,
   },

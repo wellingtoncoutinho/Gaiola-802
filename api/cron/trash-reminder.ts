@@ -20,7 +20,7 @@ const TRASH_MAP: Record<number, { room: string; moradorId: string; name: string 
 export default async function handler(req: any, res: any) {
   try {
     const today = new Date();
-    // In Brazil timezone (UTC-3)
+    // Brazil timezone (UTC-3)
     const brazilTimeStr = today.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
     const brazilDate = new Date(brazilTimeStr);
 
@@ -59,23 +59,15 @@ export default async function handler(req: any, res: any) {
       cleanPhone = `55${cleanPhone}`;
     }
 
-    const baseUrl = process.env.APP_URL || 'https://gaiola-802.vercel.app';
-    const confirmUrl = `${baseUrl}/?confirm_chore=lixo&date=${dateKey}&morador=${assigned.moradorId}`;
-
-    const messageText = `🗑️ *Gaiola 802 - Escala do Lixo*
-
-Olá *${assigned.name}* (${assigned.room})!
-Hoje é o seu dia oficial de retirar o lixo da casa (10h).
-
-• Amarrar os sacos da cozinha, área de serviço e banheiros
-• Descer até a lixeira do prédio
-• Repor sacos novos nas lixeiras
-
-✅ *Confirme a retirada no link abaixo:*
-${confirmUrl}`;
+    // Direct concise message requested by user (no external links)
+    const messageText = `Olá, ${assigned.name}, hoje é dia de tirar o lixo da casa. Clique em 'Confirmar retirada' somente quando retirar o lixo.`;
+    const buttonTitle = 'Confirmar retirada';
+    const buttonId = `CONFIRM_TRASH_${dateKey}`;
 
     const phoneNumberId =
-      process.env.META_WA_PHONE_NUMBER_ID || chores.metaConfig?.phoneNumberId || '';
+      process.env.META_WA_PHONE_NUMBER_ID ||
+      chores.metaConfig?.phoneNumberId ||
+      '1261779623696198';
     const accessToken =
       process.env.META_WA_ACCESS_TOKEN || chores.metaConfig?.accessToken || '';
 
@@ -84,52 +76,94 @@ ${confirmUrl}`;
 
     if (phoneNumberId && accessToken && cleanPhone) {
       const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
-      const metaRes = await fetch(metaApiUrl, {
+
+      const interactivePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: messageText,
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: buttonId,
+                  title: buttonTitle,
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      let metaRes = await fetch(metaApiUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: cleanPhone,
-          type: 'text',
-          text: {
-            preview_url: true,
-            body: messageText,
-          },
-        }),
+        body: JSON.stringify(interactivePayload),
       });
+
       metaResult = await metaRes.json();
+
+      // If interactive failed, attempt plain text fallback
+      if (!metaRes.ok) {
+        console.warn('[Trash Cron] Interactive message failed, attempting text fallback...', metaResult);
+        const fallbackRes = await fetch(metaApiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'text',
+            text: {
+              body: `${messageText}\n\n👉 Responda "Confirmar retirada" nesta conversa para registrar a conclusão.`,
+            },
+          }),
+        });
+        if (fallbackRes.ok) {
+          metaRes = fallbackRes;
+          metaResult = await fallbackRes.json();
+        }
+      }
+
       sentSuccess = metaRes.ok && !metaResult.error;
+
+      if (sentSuccess) {
+        const now = new Date().toISOString();
+        chores.trashRecords[dateKey] = {
+          date: dateKey,
+          moradorId: assigned.moradorId,
+          room: assigned.room,
+          confirmed: false,
+          whatsappSent: true,
+          whatsappSentAt: now,
+        };
+        chores.updatedAt = now;
+        await saveChoresToBlob(chores);
+      }
     }
 
-    // Record notification dispatch attempt
-    const now = new Date().toISOString();
-    chores.trashRecords[dateKey] = {
-      ...(chores.trashRecords[dateKey] || {}),
-      date: dateKey,
-      moradorId: assigned.moradorId,
-      room: assigned.room,
-      confirmed: false,
-      whatsappSent: sentSuccess,
-      whatsappSentAt: now,
-    };
-    chores.updatedAt = now;
-    await saveChoresToBlob(chores);
-
     return sendResponse(res, 200, {
-      status: 'dispatched',
+      status: sentSuccess ? 'sent' : 'scheduled_ready',
       date: dateKey,
-      morador: assigned.name,
+      assigned: assigned.name,
       room: assigned.room,
-      phone: cleanPhone || 'não configurado',
-      sentViaMeta: sentSuccess,
-      metaResponse: metaResult,
+      phone: cleanPhone || 'nao_cadastrado',
+      metaResult,
     });
   } catch (err: any) {
-    console.error('[Cron Trash Reminder Error]:', err);
+    console.error('[Trash Reminder Cron Error]:', err);
     return sendResponse(res, 500, { error: err.message || 'Internal Server Error' });
   }
 }

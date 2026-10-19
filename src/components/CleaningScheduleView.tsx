@@ -77,7 +77,7 @@ export const CleaningScheduleView: React.FC<CleaningScheduleViewProps> = ({
     setIsSendingWa(true);
     setWaFeedback(null);
 
-    const { messageText } = generateCleaningMessage(
+    const { messageText, buttonText, buttonPayload } = generateCleaningMessage(
       currentWeekDuty.moradorName,
       currentWeekDuty.room,
       currentWeekDuty.weekId,
@@ -90,6 +90,8 @@ export const CleaningScheduleView: React.FC<CleaningScheduleViewProps> = ({
       taskType: 'cleaning',
       taskId: currentWeekDuty.weekId,
       moradorId: currentWeekDuty.moradorId,
+      buttonText,
+      buttonPayload,
     });
 
     setIsSendingWa(false);

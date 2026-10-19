@@ -65,7 +65,7 @@ export const TrashScheduleView: React.FC<TrashScheduleViewProps> = ({
     setIsSendingWa(true);
     setWaFeedback(null);
 
-    const { messageText } = generateTrashMessage(
+    const { messageText, buttonText, buttonPayload } = generateTrashMessage(
       duty.moradorName,
       duty.roomName,
       duty.dateKey,
@@ -78,6 +78,8 @@ export const TrashScheduleView: React.FC<TrashScheduleViewProps> = ({
       taskType: 'trash',
       taskId: duty.dateKey,
       moradorId: duty.moradorId,
+      buttonText,
+      buttonPayload,
     });
 
     setIsSendingWa(false);
@@ -422,10 +424,10 @@ export const TrashScheduleView: React.FC<TrashScheduleViewProps> = ({
         </div>
         <ul className="list-disc pl-5 space-y-1 text-[11px] leading-relaxed">
           <li>
-            <strong>Horário oficial:</strong> Toda segunda a sexta às 10:00 da manhã, o sistema envia a mensagem automática pelo WhatsApp com o link de confirmação para a pessoa do quarto escalado.
+            <strong>Horário oficial:</strong> Toda segunda a sexta às 10:00 da manhã, o sistema envia a mensagem automática pelo WhatsApp com o botão nativo <em>"Confirmar retirada"</em> para a pessoa do quarto escalado.
           </li>
           <li>
-            <strong>Confirmação em 1 clique:</strong> Ao clicar no link do WhatsApp ou no botão acima, o status atualiza imediatamente para toda a casa em tempo real.
+            <strong>Confirmação em 1 clique:</strong> Ao tocar no botão direto no WhatsApp ou no botão acima, o status atualiza imediatamente para toda a casa em tempo real (sem precisar abrir link externo).
           </li>
           <li>
             <strong>Troca de dias:</strong> Se dois moradores precisarem trocar de dia, basta qualquer morador marcar a confirmação no app.

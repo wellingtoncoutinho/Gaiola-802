@@ -62,9 +62,9 @@ export function getDefaultChoresState(): ChoresState {
     trashRecords: {},
     cleaningRecords: {},
     metaConfig: {
-      phoneNumberId: '',
+      phoneNumberId: '1261779623696198',
       accessToken: '',
-      businessAccountId: '',
+      businessAccountId: '1604487048142695',
       templateName: '',
       testMode: false,
     },
@@ -506,52 +506,37 @@ export function getAppBaseUrl(): string {
 
 export function generateTrashMessage(
   moradorName: string,
-  roomName: string,
-  dateKey: string,
-  moradorId: MoradorId
-): { messageText: string; confirmUrl: string } {
+  _roomName?: string,
+  dateKey?: string,
+  moradorId?: MoradorId
+): { messageText: string; buttonText: string; buttonPayload: string; confirmUrl: string } {
   const baseUrl = getAppBaseUrl();
-  const confirmUrl = `${baseUrl}/?confirm_chore=lixo&date=${dateKey}&morador=${moradorId}`;
+  const confirmUrl = `${baseUrl}/?confirm_chore=lixo&date=${dateKey || ''}&morador=${moradorId || ''}`;
+  const messageText = `Olá, ${moradorName}, hoje é dia de tirar o lixo da casa. Clique em 'Confirmar retirada' somente quando retirar o lixo.`;
+  const buttonText = 'Confirmar retirada';
+  const buttonPayload = `CONFIRM_TRASH_${dateKey || 'today'}`;
 
-  const messageText = `🗑️ *Gaiola 802 - Escala do Lixo*
-
-Olá *${moradorName}* (${roomName})!
-Hoje é o seu dia oficial de retirar o lixo da casa.
-
-• Amarrar os sacos da cozinha, área de serviço e banheiros
-• Descer até a lixeira do prédio
-• Repor sacos novos nas lixeiras
-
-✅ *Confirme a retirada no botão/link abaixo:*
-${confirmUrl}`;
-
-  return { messageText, confirmUrl };
+  return { messageText, buttonText, buttonPayload, confirmUrl };
 }
 
 export function generateCleaningMessage(
   moradorName: string,
-  roomName: string,
-  weekId: string,
-  moradorId: MoradorId
-): { messageText: string; confirmUrl: string } {
+  _roomName?: string,
+  weekId?: string,
+  moradorId?: MoradorId
+): { messageText: string; buttonText: string; buttonPayload: string; confirmUrl: string } {
   const baseUrl = getAppBaseUrl();
-  const confirmUrl = `${baseUrl}/?confirm_chore=limpeza&week=${weekId}&morador=${moradorId}`;
+  const confirmUrl = `${baseUrl}/?confirm_chore=limpeza&week=${weekId || ''}&morador=${moradorId || ''}`;
+  const messageText = `Olá, ${moradorName}, hoje é sexta-feira e é dia da manutenção de limpeza do apartamento.
 
-  const messageText = `🧹 *Gaiola 802 - Manutenção da Limpeza*
-
-Olá *${moradorName}* (${roomName})!
-Hoje é sexta-feira e esta semana a responsabilidade da manutenção da limpeza do apartamento é sua!
-
-Checklist rápido:
-• Trocar e recolher panos de prato e toalhas de mão
-• Checar se as bancadas e pia da cozinha estão limpas
+Checklist:
+• Checar se as bancadas e as pias estão limpas
 • Verificar lixeiras e reposição de sacos
-• Manutenção do chão das áreas comuns
+• Manutenção do chão das áreas comuns`;
+  const buttonText = 'Limpeza concluída';
+  const buttonPayload = `CONFIRM_CLEANING_${weekId || 'week'}`;
 
-✅ *Após concluir, confirme no link abaixo:*
-${confirmUrl}`;
-
-  return { messageText, confirmUrl };
+  return { messageText, buttonText, buttonPayload, confirmUrl };
 }
 
 /**
@@ -563,6 +548,8 @@ export async function sendWhatsAppNotification(params: {
   taskType: 'trash' | 'cleaning';
   taskId: string;
   moradorId: MoradorId;
+  buttonText?: string;
+  buttonPayload?: string;
 }): Promise<{ success: boolean; error?: string; method: 'meta' | 'fallback_ready' }> {
   const cleanPhone = params.toPhone.replace(/[^\d]/g, '');
   if (!cleanPhone) {
@@ -579,6 +566,8 @@ export async function sendWhatsAppNotification(params: {
         taskType: params.taskType,
         taskId: params.taskId,
         moradorId: params.moradorId,
+        buttonText: params.buttonText,
+        buttonPayload: params.buttonPayload,
       }),
     });
 

@@ -58,7 +58,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const body = await parseJsonBody(req);
-    const { to, text, taskType, taskId, moradorId } = body || {};
+    const { to, text, taskType, taskId, moradorId, buttonText, buttonPayload } = body || {};
 
     if (!to || !text) {
       return sendResponse(res, 400, { error: 'Campos "to" e "text" são obrigatórios.' });
@@ -70,10 +70,12 @@ export default async function handler(req: any, res: any) {
       cleanPhone = `55${cleanPhone}`;
     }
 
-    // Retrieve Meta credentials from Blob settings or environment
+    // Retrieve Meta credentials from Blob settings, environment, or verified default
     const chores = await getChoresFromBlob();
     const phoneNumberId =
-      process.env.META_WA_PHONE_NUMBER_ID || chores.metaConfig?.phoneNumberId || '';
+      process.env.META_WA_PHONE_NUMBER_ID ||
+      chores.metaConfig?.phoneNumberId ||
+      '1261779623696198';
     const accessToken =
       process.env.META_WA_ACCESS_TOKEN || chores.metaConfig?.accessToken || '';
 
@@ -81,26 +83,71 @@ export default async function handler(req: any, res: any) {
       return sendResponse(res, 400, {
         success: false,
         error:
-          'Credenciais da API da Meta não configuradas. Preencha o "Phone Number ID" e o "Access Token" no painel de configurações ou utilize o link de envio direto.',
+          'Credenciais da API da Meta não configuradas. Preencha o "Access Token" no painel de configurações para enviar mensagens automáticas.',
         requiresConfig: true,
       });
     }
 
-    // Call Meta WhatsApp Cloud API
+    // Build Interactive Button or Text Payload
+    let buttonTitle = buttonText;
+    let replyId = buttonPayload;
+
+    if (!buttonTitle) {
+      if (taskType === 'trash') {
+        buttonTitle = 'Confirmar retirada';
+        replyId = replyId || `CONFIRM_TRASH_${taskId || 'today'}`;
+      } else if (taskType === 'cleaning') {
+        buttonTitle = 'Limpeza concluída';
+        replyId = replyId || `CONFIRM_CLEANING_${taskId || 'week'}`;
+      }
+    }
+
+    // Button title in WhatsApp Cloud API must be <= 20 chars
+    if (buttonTitle && buttonTitle.length > 20) {
+      buttonTitle = buttonTitle.slice(0, 20);
+    }
+
     const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-    const payload = {
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: cleanPhone,
-      type: 'text',
-      text: {
-        preview_url: true,
-        body: text,
-      },
-    };
+    let payload: any;
+    if (buttonTitle && replyId) {
+      payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: text,
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: replyId,
+                  title: buttonTitle,
+                },
+              },
+            ],
+          },
+        },
+      };
+    } else {
+      payload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: text,
+        },
+      };
+    }
 
-    const metaRes = await fetch(metaApiUrl, {
+    let metaRes = await fetch(metaApiUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -109,7 +156,36 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify(payload),
     });
 
-    const metaData = await metaRes.json();
+    let metaData = await metaRes.json();
+
+    // Fallback: If interactive is rejected for any reason, retry with plain text
+    if (!metaRes.ok && payload.type === 'interactive') {
+      console.warn('[Meta WhatsApp API] Interactive message failed, retrying plain text...', metaData.error);
+      const textFallbackPayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: `${text}\n\n👉 Responda "${buttonTitle}" nesta conversa para confirmar automaticamente.`,
+        },
+      };
+
+      const fallbackRes = await fetch(metaApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(textFallbackPayload),
+      });
+
+      if (fallbackRes.ok) {
+        metaRes = fallbackRes;
+        metaData = await fallbackRes.json();
+      }
+    }
 
     if (!metaRes.ok || metaData.error) {
       console.error('[Meta WhatsApp API Error]:', metaData.error);
@@ -161,6 +237,7 @@ export default async function handler(req: any, res: any) {
 
     return sendResponse(res, 200, {
       success: true,
+      interactiveSent: payload.type === 'interactive',
       metaResponse: metaData,
       phoneSent: cleanPhone,
     });

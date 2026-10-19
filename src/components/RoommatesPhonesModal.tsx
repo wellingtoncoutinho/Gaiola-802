@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { X, Phone, Save, Check, Sparkles, Shield, Send, ExternalLink, HelpCircle } from 'lucide-react';
+import { X, Phone, Save, Check, Sparkles, Shield, Send, ExternalLink, HelpCircle, Copy } from 'lucide-react';
 import { ROOMMATES } from '../constants/roommates';
 import { MoradorId, ChoresState, MetaWhatsAppConfig } from '../types';
 import { updateRoommatePhone, updateMetaConfig, sendWhatsAppNotification } from '../services/choresService';
@@ -21,7 +20,14 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
   const [phones, setPhones] = useState<Record<MoradorId, string>>(chores.phones);
   const [metaConfig, setMetaConfig] = useState<MetaWhatsAppConfig>(chores.metaConfig);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState<{ loading: boolean; message?: string; success?: boolean } | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1800);
+  };
 
   useEffect(() => {
     setPhones(chores.phones);
@@ -218,43 +224,102 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
               <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-900 dark:text-emerald-300 text-xs">
                 <div className="font-bold flex items-center gap-1.5">
                   <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Meta WhatsApp Cloud API Conectada</span>
+                  <span>Meta WhatsApp Cloud API (Simple Psi / Gaiola 802)</span>
                 </div>
                 <p className="mt-1 text-[11px] text-emerald-800 dark:text-emerald-300">
-                  Insira o <strong>Phone Number ID</strong> e o <strong>Access Token</strong> gerados no painel de desenvolvedores do Meta for Developers (WhatsApp Business Cloud API).
+                  O <strong>Phone Number ID</strong> já está configurado como <strong>1261779623696198</strong> (remetente +55 21 96886-4184). Insira o seu <strong>Access Token</strong> abaixo para ativar o envio automático.
                 </p>
+              </div>
+
+              {/* Webhook Box para Resposta por Botão Nativo */}
+              <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-900 text-purple-900 dark:text-purple-300 space-y-2">
+                <div className="font-bold flex items-center gap-1.5 text-xs">
+                  <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span>Webhook de Confirmação Automática (Botão Nativo)</span>
+                </div>
+                <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed">
+                  Para que o WhatsApp receba o clique no botão <em>"Confirmar retirada"</em> e marque como concluído no app sem link:
+                </p>
+                <div className="space-y-2 pt-1">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-400 block mb-0.5">
+                      URL de Retorno de Chamada (Callback URL):
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value="https://gaiola-802.vercel.app/api/webhook/whatsapp"
+                        className="flex-1 px-2.5 py-1 text-[11px] font-mono bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 rounded-lg text-zinc-900 dark:text-zinc-100 select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('https://gaiola-802.vercel.app/api/webhook/whatsapp', 'url')}
+                        className="px-2 py-1 text-[11px] font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        {copiedKey === 'url' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedKey === 'url' ? 'Copiado' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-400 block mb-0.5">
+                      Token de Verificação (Verify Token):
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value="gaiola802_webhook_token"
+                        className="flex-1 px-2.5 py-1 text-[11px] font-mono bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 rounded-lg text-zinc-900 dark:text-zinc-100 select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard('gaiola802_webhook_token', 'token')}
+                        className="px-2 py-1 text-[11px] font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        {copiedKey === 'token' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedKey === 'token' ? 'Copiado' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-[10px] text-purple-700 dark:text-purple-400 pt-1">
+                  💡 No painel Meta for Developers &gt; WhatsApp &gt; Configuração &gt; Webhook, cole os dados acima e marque o campo <strong>messages</strong>.
+                </div>
               </div>
 
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Phone Number ID (ID do Número do WhatsApp):
+                    Phone Number ID (Identificação do Número de Telefone):
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: 104928374650192"
-                    value={metaConfig.phoneNumberId || ''}
+                    placeholder="1261779623696198"
+                    value={metaConfig.phoneNumberId || '1261779623696198'}
                     onChange={(e) => setMetaConfig((prev) => ({ ...prev, phoneNumberId: e.target.value.trim() }))}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono focus:outline-hidden focus:ring-2 focus:ring-[#1B2A4A]/30"
                   />
                   <span className="text-[10px] text-zinc-400 mt-0.5 block">
-                    Encontrado em: WhatsApp &gt; Configuração da API &gt; ID do número de telefone.
+                    ID correspondente ao número +55 21 96886-4184 na sua conta da Meta.
                   </span>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Access Token (Token de Acesso Permanente ou do Sistema):
+                    Access Token (Token de Acesso do Sistema / Permanente):
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="EAAG..."
+                    placeholder="Cole seu token de acesso EAAG..."
                     value={metaConfig.accessToken || ''}
                     onChange={(e) => setMetaConfig((prev) => ({ ...prev, accessToken: e.target.value.trim() }))}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono focus:outline-hidden focus:ring-2 focus:ring-[#1B2A4A]/30"
                   />
                   <span className="text-[10px] text-zinc-400 mt-0.5 block">
-                    Token de usuário do sistema ou token temporário de 24h para testes.
+                    Token gerado no Meta for Developers (Temporário de 24h ou Permanente de Usuário do Sistema).
                   </span>
                 </div>
 

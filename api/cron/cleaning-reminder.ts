@@ -68,25 +68,21 @@ export default async function handler(req: any, res: any) {
       cleanPhone = `55${cleanPhone}`;
     }
 
-    const baseUrl = process.env.APP_URL || 'https://gaiola-802.vercel.app';
-    const confirmUrl = `${baseUrl}/?confirm_chore=limpeza&week=${weekId}&morador=${assigned.moradorId}`;
+    // Direct concise message requested by user (no external links)
+    const messageText = `Olá, ${assigned.name}, hoje é sexta-feira e é dia da manutenção de limpeza do apartamento.
 
-    const messageText = `🧹 *Gaiola 802 - Manutenção da Limpeza*
-
-Olá *${assigned.name}* (${assigned.room})!
-Hoje é sexta-feira e esta semana a responsabilidade da manutenção da limpeza do apê é sua!
-
-Checklist rápido:
-• Trocar e recolher panos de prato e toalhas de mão
-• Checar se as bancadas e pia da cozinha estão limpas
+Checklist:
+• Checar se as bancadas e as pias estão limpas
 • Verificar lixeiras e reposição de sacos
-• Manutenção do chão das áreas comuns
+• Manutenção do chão das áreas comuns`;
 
-✅ *Após concluir, confirme no link abaixo:*
-${confirmUrl}`;
+    const buttonTitle = 'Limpeza concluída';
+    const buttonId = `CONFIRM_CLEANING_${weekId}`;
 
     const phoneNumberId =
-      process.env.META_WA_PHONE_NUMBER_ID || chores.metaConfig?.phoneNumberId || '';
+      process.env.META_WA_PHONE_NUMBER_ID ||
+      chores.metaConfig?.phoneNumberId ||
+      '1261779623696198';
     const accessToken =
       process.env.META_WA_ACCESS_TOKEN || chores.metaConfig?.accessToken || '';
 
@@ -95,56 +91,99 @@ ${confirmUrl}`;
 
     if (phoneNumberId && accessToken && cleanPhone) {
       const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
-      const metaRes = await fetch(metaApiUrl, {
+
+      const interactivePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'interactive',
+        interactive: {
+          type: 'button',
+          body: {
+            text: messageText,
+          },
+          action: {
+            buttons: [
+              {
+                type: 'reply',
+                reply: {
+                  id: buttonId,
+                  title: buttonTitle,
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      let metaRes = await fetch(metaApiUrl, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: cleanPhone,
-          type: 'text',
-          text: {
-            preview_url: true,
-            body: messageText,
-          },
-        }),
+        body: JSON.stringify(interactivePayload),
       });
+
       metaResult = await metaRes.json();
+
+      // If interactive failed, attempt text fallback
+      if (!metaRes.ok) {
+        console.warn('[Cleaning Cron] Interactive message failed, attempting text fallback...', metaResult);
+        const fallbackRes = await fetch(metaApiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'text',
+            text: {
+              body: `${messageText}\n\n👉 Responda "Limpeza concluída" nesta conversa para registrar a conclusão.`,
+            },
+          }),
+        });
+        if (fallbackRes.ok) {
+          metaRes = fallbackRes;
+          metaResult = await fallbackRes.json();
+        }
+      }
+
       sentSuccess = metaRes.ok && !metaResult.error;
+
+      if (sentSuccess) {
+        const now = new Date().toISOString();
+        chores.cleaningRecords[weekId] = {
+          weekId,
+          weekNumber,
+          year,
+          startDate: '',
+          fridayDate: '',
+          endDate: '',
+          moradorId: assigned.moradorId,
+          room: assigned.room,
+          confirmed: false,
+          whatsappSent: true,
+          whatsappSentAt: now,
+        };
+        chores.updatedAt = now;
+        await saveChoresToBlob(chores);
+      }
     }
 
-    const now = new Date().toISOString();
-    chores.cleaningRecords[weekId] = {
-      ...(chores.cleaningRecords[weekId] || {}),
-      weekId,
-      weekNumber,
-      year,
-      startDate: '',
-      fridayDate: '',
-      endDate: '',
-      moradorId: assigned.moradorId,
-      room: assigned.room,
-      confirmed: false,
-      whatsappSent: sentSuccess,
-      whatsappSentAt: now,
-    };
-    chores.updatedAt = now;
-    await saveChoresToBlob(chores);
-
     return sendResponse(res, 200, {
-      status: 'dispatched',
+      status: sentSuccess ? 'sent' : 'scheduled_ready',
       weekId,
-      morador: assigned.name,
+      assigned: assigned.name,
       room: assigned.room,
-      phone: cleanPhone || 'não configurado',
-      sentViaMeta: sentSuccess,
-      metaResponse: metaResult,
+      phone: cleanPhone || 'nao_cadastrado',
+      metaResult,
     });
   } catch (err: any) {
-    console.error('[Cron Cleaning Reminder Error]:', err);
+    console.error('[Cleaning Reminder Cron Error]:', err);
     return sendResponse(res, 500, { error: err.message || 'Internal Server Error' });
   }
 }
