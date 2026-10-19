@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
 
       metaResult = await metaRes.json();
 
-      // Fallback 1: Try official template gaiola_escala_lixo
+      // Fallback 1: Try official template gaiola_aviso_lixo
       if (!metaRes.ok) {
         const templatePayload = {
           messaging_product: 'whatsapp',
@@ -120,7 +120,7 @@ export default async function handler(req: any, res: any) {
           to: cleanPhone,
           type: 'template',
           template: {
-            name: 'gaiola_escala_lixo',
+            name: 'gaiola_aviso_lixo',
             language: { code: 'pt_BR' },
             components: [
               {

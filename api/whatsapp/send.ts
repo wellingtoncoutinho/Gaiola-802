@@ -160,7 +160,7 @@ export default async function handler(req: any, res: any) {
 
     // Fallback 1: Try approved template if interactive message fails (required outside 24h window)
     if (!metaRes.ok && taskType) {
-      const templateName = taskType === 'trash' ? 'gaiola_escala_lixo' : 'gaiola_manutencao_limpeza';
+      const templateName = taskType === 'trash' ? 'gaiola_aviso_lixo' : 'gaiola_aviso_limpeza';
       const templatePayload = {
         messaging_product: 'whatsapp',
         recipient_type: 'individual',

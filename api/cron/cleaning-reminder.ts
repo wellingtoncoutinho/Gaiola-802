@@ -127,7 +127,7 @@ Checklist:
 
       metaResult = await metaRes.json();
 
-      // Fallback 1: Try official template gaiola_manutencao_limpeza
+      // Fallback 1: Try official template gaiola_aviso_limpeza
       if (!metaRes.ok) {
         const templatePayload = {
           messaging_product: 'whatsapp',
@@ -135,7 +135,7 @@ Checklist:
           to: cleanPhone,
           type: 'template',
           template: {
-            name: 'gaiola_manutencao_limpeza',
+            name: 'gaiola_aviso_limpeza',
             language: { code: 'pt_BR' },
             components: [
               {
