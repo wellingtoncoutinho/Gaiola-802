@@ -127,9 +127,43 @@ Checklist:
 
       metaResult = await metaRes.json();
 
-      // If interactive failed, attempt text fallback
+      // Fallback 1: Try official template gaiola_manutencao_limpeza
       if (!metaRes.ok) {
-        console.warn('[Cleaning Cron] Interactive message failed, attempting text fallback...', metaResult);
+        const templatePayload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanPhone,
+          type: 'template',
+          template: {
+            name: 'gaiola_manutencao_limpeza',
+            language: { code: 'pt_BR' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: assigned.name }],
+              },
+            ],
+          },
+        };
+
+        const templateRes = await fetch(metaApiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(templatePayload),
+        });
+
+        if (templateRes.ok) {
+          metaRes = templateRes;
+          metaResult = await templateRes.json();
+        }
+      }
+
+      // Fallback 2: Plain text with reply instructions
+      if (!metaRes.ok) {
+        console.warn('[Cleaning Cron] Interactive/Template failed, attempting text fallback...', metaResult);
         const fallbackRes = await fetch(metaApiUrl, {
           method: 'POST',
           headers: {

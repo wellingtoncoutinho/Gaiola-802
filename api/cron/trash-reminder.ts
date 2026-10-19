@@ -112,9 +112,43 @@ export default async function handler(req: any, res: any) {
 
       metaResult = await metaRes.json();
 
-      // If interactive failed, attempt plain text fallback
+      // Fallback 1: Try official template gaiola_escala_lixo
       if (!metaRes.ok) {
-        console.warn('[Trash Cron] Interactive message failed, attempting text fallback...', metaResult);
+        const templatePayload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: cleanPhone,
+          type: 'template',
+          template: {
+            name: 'gaiola_escala_lixo',
+            language: { code: 'pt_BR' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: assigned.name }],
+              },
+            ],
+          },
+        };
+
+        const templateRes = await fetch(metaApiUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(templatePayload),
+        });
+
+        if (templateRes.ok) {
+          metaRes = templateRes;
+          metaResult = await templateRes.json();
+        }
+      }
+
+      // Fallback 2: Plain text with reply instructions
+      if (!metaRes.ok) {
+        console.warn('[Trash Cron] Interactive/Template failed, attempting text fallback...', metaResult);
         const fallbackRes = await fetch(metaApiUrl, {
           method: 'POST',
           headers: {

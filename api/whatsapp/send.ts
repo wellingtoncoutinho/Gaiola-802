@@ -158,7 +158,42 @@ export default async function handler(req: any, res: any) {
 
     let metaData = await metaRes.json();
 
-    // Fallback: If interactive is rejected for any reason, retry with plain text
+    // Fallback 1: Try approved template if interactive message fails (required outside 24h window)
+    if (!metaRes.ok && taskType) {
+      const templateName = taskType === 'trash' ? 'gaiola_escala_lixo' : 'gaiola_manutencao_limpeza';
+      const templatePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: 'pt_BR' },
+          components: [
+            {
+              type: 'body',
+              parameters: [{ type: 'text', text: moradorId || 'Morador' }],
+            },
+          ],
+        },
+      };
+
+      const templateRes = await fetch(metaApiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(templatePayload),
+      });
+
+      if (templateRes.ok) {
+        metaRes = templateRes;
+        metaData = await templateRes.json();
+      }
+    }
+
+    // Fallback 2: Plain text with reply instructions
     if (!metaRes.ok && payload.type === 'interactive') {
       console.warn('[Meta WhatsApp API] Interactive message failed, retrying plain text...', metaData.error);
       const textFallbackPayload = {
