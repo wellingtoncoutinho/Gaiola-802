@@ -10,11 +10,11 @@ function sendResponse(res: any, status: number, data: any) {
 }
 
 const CLEANING_ROOMS = [
-  { moradorId: 'thaciane', room: 'Quarto 1', name: 'Thaciane' },
-  { moradorId: 'pedro', room: 'Quarto 2', name: 'Pedro' },
-  { moradorId: 'yan', room: 'Quarto 3', name: 'Yan' },
-  { moradorId: 'wellington', room: 'Quarto 4', name: 'Wellington' },
-  { moradorId: 'fabio', room: 'Quarto 5', name: 'Fabio' },
+  { moradorId: 'pedro', room: 'Quarto 1', name: 'Pedro' },
+  { moradorId: 'yan', room: 'Quarto 2', name: 'Yan' },
+  { moradorId: 'wellington', room: 'Quarto 3', name: 'Wellington' },
+  { moradorId: 'fabio', room: 'Quarto 4', name: 'Fabio' },
+  { moradorId: 'thaciane', room: 'Quarto 5 (Suíte)', name: 'Thaciane' },
 ];
 
 function getISOWeekNumber(d: Date): number {

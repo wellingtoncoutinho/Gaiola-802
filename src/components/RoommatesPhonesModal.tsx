@@ -1,7 +1,8 @@
-import { X, Phone, Save, Check, Sparkles, Shield, Send, ExternalLink, HelpCircle, Copy } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Phone, Save, Check, Sparkles, Shield, Send, HelpCircle, Copy, Loader2 } from 'lucide-react';
 import { ROOMMATES } from '../constants/roommates';
 import { MoradorId, ChoresState, MetaWhatsAppConfig } from '../types';
-import { updateRoommatePhone, updateMetaConfig, sendWhatsAppNotification } from '../services/choresService';
+import { saveChoresSettings, sendWhatsAppNotification } from '../services/choresService';
 
 interface RoommatesPhonesModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
   const [phones, setPhones] = useState<Record<MoradorId, string>>(chores.phones);
   const [metaConfig, setMetaConfig] = useState<MetaWhatsAppConfig>(chores.metaConfig);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [testStatus, setTestStatus] = useState<{ loading: boolean; message?: string; success?: boolean } | null>(null);
 
@@ -29,10 +31,13 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
+  // Only initialize when modal opens so polling doesn't overwrite active typing!
   useEffect(() => {
-    setPhones(chores.phones);
-    setMetaConfig(chores.metaConfig);
-  }, [chores]);
+    if (isOpen) {
+      setPhones({ ...(chores.phones || {}) });
+      setMetaConfig({ ...(chores.metaConfig || {}) });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -41,17 +46,20 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
   };
 
   const handleSaveAll = async () => {
-    let current = chores;
-    for (const [id, num] of Object.entries(phones)) {
-      current = await updateRoommatePhone(id as MoradorId, num);
+    setIsSaving(true);
+    try {
+      const updated = await saveChoresSettings(phones, metaConfig);
+      onSaveChores(updated);
+      setSavedSuccess(true);
+      setTimeout(() => {
+        setSavedSuccess(false);
+        onClose();
+      }, 900);
+    } catch (err) {
+      console.error('[RoommatesPhonesModal] Erro ao salvar:', err);
+    } finally {
+      setIsSaving(false);
     }
-    current = await updateMetaConfig(metaConfig);
-    onSaveChores(current);
-    setSavedSuccess(true);
-    setTimeout(() => {
-      setSavedSuccess(false);
-      onClose();
-    }, 1200);
   };
 
   const handleTestMetaApi = async () => {
@@ -183,7 +191,7 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
                             {m.name}
                           </div>
                           <div className="text-[11px] text-zinc-400">
-                            {m.room} · {m.id === 'thaciane' ? 'Segunda' : m.id === 'pedro' ? 'Terça' : m.id === 'yan' ? 'Quarta' : m.id === 'wellington' ? 'Quinta' : 'Sexta'}
+                            {m.room} · {m.id === 'pedro' ? 'Segunda' : m.id === 'yan' ? 'Terça' : m.id === 'wellington' ? 'Quarta' : m.id === 'fabio' ? 'Quinta' : 'Sexta'}
                           </div>
                         </div>
                       </div>
@@ -196,9 +204,12 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
                           <input
                             type="tel"
                             placeholder="(21) 99999-9999"
-                            value={val.replace(/^55/, '')}
+                            value={val ? val.replace(/^55/, '') : ''}
                             onChange={(e) => {
-                              const digits = e.target.value.replace(/[^\d]/g, '');
+                              let digits = e.target.value.replace(/[^\d]/g, '');
+                              if (digits.startsWith('55') && digits.length > 11) {
+                                digits = digits.slice(2);
+                              }
                               handlePhoneChange(m.id, digits ? `55${digits}` : '');
                             }}
                             className="w-full pl-10 pr-3 py-1.5 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#1B2A4A]/30 font-mono"
@@ -374,11 +385,12 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
             </button>
             <button
               type="button"
+              disabled={isSaving}
               onClick={handleSaveAll}
-              className="px-5 py-2 text-xs font-semibold rounded-xl bg-[#1B2A4A] text-white hover:bg-[#15223c] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 text-xs font-semibold rounded-xl bg-[#1B2A4A] text-white hover:bg-[#15223c] dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <Save className="w-3.5 h-3.5" />
-              <span>Salvar Alterações</span>
+              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>{isSaving ? 'Salvando...' : 'Salvar Alterações'}</span>
             </button>
           </div>
         </div>

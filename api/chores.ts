@@ -19,11 +19,11 @@ interface ChoresData {
 
 const DEFAULT_CHORES_DATA: ChoresData = {
   phones: {
-    thaciane: '',
     pedro: '',
     yan: '',
     wellington: '',
     fabio: '',
+    thaciane: '',
   },
   trashRecords: {},
   cleaningRecords: {},
@@ -235,6 +235,24 @@ export default async function handler(req: any, res: any) {
 
       if (action === 'update_phone' && body?.moradorId) {
         current.phones[body.moradorId] = body.phone || '';
+        current.updatedAt = new Date().toISOString();
+        await saveChoresToBlob(current);
+        return sendResponse(res, 200, { success: true, data: current });
+      }
+
+      if (action === 'save_settings') {
+        if (body.phones && typeof body.phones === 'object') {
+          current.phones = {
+            ...current.phones,
+            ...body.phones,
+          };
+        }
+        if (body.metaConfig && typeof body.metaConfig === 'object') {
+          current.metaConfig = {
+            ...current.metaConfig,
+            ...body.metaConfig,
+          };
+        }
         current.updatedAt = new Date().toISOString();
         await saveChoresToBlob(current);
         return sendResponse(res, 200, { success: true, data: current });

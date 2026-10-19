@@ -2,24 +2,10 @@ import { Morador, LoadTypeConfig } from '../types';
 
 export const ROOMMATES: Morador[] = [
   {
-    id: 'thaciane',
-    name: 'Thaciane',
-    avatarInitials: 'TH',
-    room: 'Quarto 1',
-    color: {
-      bg: 'bg-indigo-50 dark:bg-indigo-950/40',
-      text: 'text-indigo-800 dark:text-indigo-300',
-      border: 'border-indigo-200 dark:border-indigo-800/60',
-      badgeBg: 'bg-indigo-100/70 dark:bg-indigo-900/50',
-      badgeText: 'text-indigo-900 dark:text-indigo-200',
-      hex: '#6366F1',
-    },
-  },
-  {
     id: 'pedro',
     name: 'Pedro',
     avatarInitials: 'PE',
-    room: 'Quarto 2',
+    room: 'Quarto 1',
     color: {
       bg: 'bg-emerald-50 dark:bg-emerald-950/40',
       text: 'text-emerald-800 dark:text-emerald-300',
@@ -33,7 +19,7 @@ export const ROOMMATES: Morador[] = [
     id: 'yan',
     name: 'Yan',
     avatarInitials: 'YA',
-    room: 'Quarto 3',
+    room: 'Quarto 2',
     color: {
       bg: 'bg-orange-50 dark:bg-orange-950/40',
       text: 'text-orange-800 dark:text-orange-300',
@@ -47,7 +33,7 @@ export const ROOMMATES: Morador[] = [
     id: 'wellington',
     name: 'Wellington',
     avatarInitials: 'WE',
-    room: 'Quarto 4',
+    room: 'Quarto 3',
     color: {
       bg: 'bg-sky-50 dark:bg-sky-950/40',
       text: 'text-sky-800 dark:text-sky-300',
@@ -61,7 +47,7 @@ export const ROOMMATES: Morador[] = [
     id: 'fabio',
     name: 'Fabio',
     avatarInitials: 'FA',
-    room: 'Quarto 5 (Suíte)',
+    room: 'Quarto 4',
     color: {
       bg: 'bg-amber-50 dark:bg-amber-950/40',
       text: 'text-amber-800 dark:text-amber-300',
@@ -71,32 +57,46 @@ export const ROOMMATES: Morador[] = [
       hex: '#F59E0B',
     },
   },
+  {
+    id: 'thaciane',
+    name: 'Thaciane',
+    avatarInitials: 'TH',
+    room: 'Quarto 5 (Suíte)',
+    color: {
+      bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+      text: 'text-indigo-800 dark:text-indigo-300',
+      border: 'border-indigo-200 dark:border-indigo-800/60',
+      badgeBg: 'bg-indigo-100/70 dark:bg-indigo-900/50',
+      badgeText: 'text-indigo-900 dark:text-indigo-200',
+      hex: '#6366F1',
+    },
+  },
 ];
 
 import { TrashDutyRule } from '../types';
 
 export const TRASH_SCHEDULE_RULES: TrashDutyRule[] = [
-  { weekday: 1, weekdayName: 'Segunda-feira', room: 'Quarto 1', defaultMoradorId: 'thaciane' },
-  { weekday: 2, weekdayName: 'Terça-feira', room: 'Quarto 2', defaultMoradorId: 'pedro' },
-  { weekday: 3, weekdayName: 'Quarta-feira', room: 'Quarto 3', defaultMoradorId: 'yan' },
-  { weekday: 4, weekdayName: 'Quinta-feira', room: 'Quarto 4', defaultMoradorId: 'wellington' },
-  { weekday: 5, weekdayName: 'Sexta-feira', room: 'Quarto 5', defaultMoradorId: 'fabio' },
+  { weekday: 1, weekdayName: 'Segunda-feira', room: 'Quarto 1', defaultMoradorId: 'pedro' },
+  { weekday: 2, weekdayName: 'Terça-feira', room: 'Quarto 2', defaultMoradorId: 'yan' },
+  { weekday: 3, weekdayName: 'Quarta-feira', room: 'Quarto 3', defaultMoradorId: 'wellington' },
+  { weekday: 4, weekdayName: 'Quinta-feira', room: 'Quarto 4', defaultMoradorId: 'fabio' },
+  { weekday: 5, weekdayName: 'Sexta-feira', room: 'Quarto 5', defaultMoradorId: 'thaciane' },
 ];
 
 export const CLEANING_ROTATION_ROOMS: { moradorId: import('../types').MoradorId; room: string }[] = [
-  { moradorId: 'thaciane', room: 'Quarto 1' },
-  { moradorId: 'pedro', room: 'Quarto 2' },
-  { moradorId: 'yan', room: 'Quarto 3' },
-  { moradorId: 'wellington', room: 'Quarto 4' },
-  { moradorId: 'fabio', room: 'Quarto 5' },
+  { moradorId: 'pedro', room: 'Quarto 1' },
+  { moradorId: 'yan', room: 'Quarto 2' },
+  { moradorId: 'wellington', room: 'Quarto 3' },
+  { moradorId: 'fabio', room: 'Quarto 4' },
+  { moradorId: 'thaciane', room: 'Quarto 5' },
 ];
 
 export const DEFAULT_ROOMMATE_PHONES: Record<import('../types').MoradorId, string> = {
-  thaciane: '',
   pedro: '',
   yan: '',
   wellington: '',
   fabio: '',
+  thaciane: '',
   lucas: '',
   clara: '',
   rodrigo: '',

@@ -495,6 +495,64 @@ export async function updateMetaConfig(config: Partial<MetaWhatsAppConfig>): Pro
 }
 
 /**
+ * Save Phones and Meta WhatsApp Config atomically in a single request
+ */
+export async function saveChoresSettings(
+  newPhones: Record<string, string>,
+  newMetaConfig: Partial<MetaWhatsAppConfig>
+): Promise<ChoresState> {
+  const current = loadChoresLocal();
+  const cleanedPhones: Record<string, string> = {};
+  for (const [id, num] of Object.entries(newPhones)) {
+    let clean = (num || '').replace(/[^\d]/g, '');
+    if (clean.startsWith('55') && clean.length > 11) {
+      // already has 55
+    } else if (clean && !clean.startsWith('55') && (clean.length === 10 || clean.length === 11)) {
+      clean = `55${clean}`;
+    }
+    cleanedPhones[id] = clean;
+  }
+
+  const newState: ChoresState = {
+    ...current,
+    phones: {
+      ...current.phones,
+      ...cleanedPhones,
+    },
+    metaConfig: {
+      ...current.metaConfig,
+      ...newMetaConfig,
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  saveChoresLocal(newState);
+
+  try {
+    const res = await fetch('/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'save_settings',
+        phones: newState.phones,
+        metaConfig: newState.metaConfig,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.data) {
+        saveChoresLocal(data.data);
+        return data.data;
+      }
+    }
+  } catch (e) {
+    console.error('[ChoresService] saveChoresSettings server error:', e);
+  }
+
+  return newState;
+}
+
+/**
  * Generate WhatsApp message text and direct confirmation URL
  */
 export function getAppBaseUrl(): string {

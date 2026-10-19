@@ -74,11 +74,11 @@ async function sendReplyMessage(phoneNumberId: string, accessToken: string, toPh
 }
 
 const ROOMMATES_META = [
-  { id: 'thaciane', name: 'Thaciane', room: 'Quarto 1', weekday: 1 },
-  { id: 'pedro', name: 'Pedro', room: 'Quarto 2', weekday: 2 },
-  { id: 'yan', name: 'Yan', room: 'Quarto 3', weekday: 3 },
-  { id: 'wellington', name: 'Wellington', room: 'Quarto 4', weekday: 4 },
-  { id: 'fabio', name: 'Fabio', room: 'Quarto 5', weekday: 5 },
+  { id: 'pedro', name: 'Pedro', room: 'Quarto 1', weekday: 1 },
+  { id: 'yan', name: 'Yan', room: 'Quarto 2', weekday: 2 },
+  { id: 'wellington', name: 'Wellington', room: 'Quarto 3', weekday: 3 },
+  { id: 'fabio', name: 'Fabio', room: 'Quarto 4', weekday: 4 },
+  { id: 'thaciane', name: 'Thaciane', room: 'Quarto 5 (Suíte)', weekday: 5 },
 ];
 
 function getBrazilDateString(d: Date = new Date()): string {
