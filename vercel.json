@@ -1,5 +1,15 @@
 {
   "framework": "vite",
+  "crons": [
+    {
+      "path": "/api/cron/trash-reminder",
+      "schedule": "0 13 * * 1-5"
+    },
+    {
+      "path": "/api/cron/cleaning-reminder",
+      "schedule": "0 13 * * 5"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/reservations/:path*",

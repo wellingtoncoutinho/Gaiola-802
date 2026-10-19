@@ -121,7 +121,41 @@ function getInitialReservations(): Reservation[] {
 export function reservationsApiPlugin(): Plugin {
   const dataDir = path.resolve(process.cwd(), 'data');
   const dataFile = path.resolve(dataDir, 'reservations.json');
+  const choresFile = path.resolve(dataDir, 'chores.json');
   const sseClients = new Set<ServerResponse>();
+
+  function loadChores(): any {
+    try {
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      if (fs.existsSync(choresFile)) {
+        const raw = fs.readFileSync(choresFile, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error('[Chores API] Error reading chores data file:', err);
+    }
+    return {
+      phones: { thaciane: '', pedro: '', yan: '', wellington: '', fabio: '' },
+      trashRecords: {},
+      cleaningRecords: {},
+      metaConfig: { phoneNumberId: '', accessToken: '' },
+      rotationOffset: 0,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function saveChores(data: any) {
+    try {
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      fs.writeFileSync(choresFile, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[Chores API] Error saving chores data file:', err);
+    }
+  }
 
   function loadReservations(): Reservation[] {
     try {
@@ -197,17 +231,126 @@ export function reservationsApiPlugin(): Plugin {
     const parsedUrl = new URL(url, 'http://localhost');
     const pathname = parsedUrl.pathname;
 
-    if (!pathname.startsWith('/api/reservations')) {
-      return next();
-    }
-
     // CORS preflight
     if (req.method === 'OPTIONS') {
       res.statusCode = 204;
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
       return res.end();
+    }
+
+    // A. Chores API Endpoints
+    if (pathname.startsWith('/api/chores')) {
+      if (req.method === 'GET') {
+        const chores = loadChores();
+        return sendJson(res, 200, chores);
+      }
+
+      if (req.method === 'POST') {
+        try {
+          const body = await readJsonBody(req);
+          const current = loadChores();
+          let updated = { ...current };
+
+          if (body?.action === 'set_all' && body?.data) {
+            updated = { ...current, ...body.data, updatedAt: new Date().toISOString() };
+          } else if (body?.action === 'confirm_trash' && body?.date) {
+            updated.trashRecords[body.date] = {
+              date: body.date,
+              moradorId: body.moradorId,
+              room: body.room || '',
+              confirmed: true,
+              confirmedAt: new Date().toISOString(),
+              confirmedBy: body.confirmedBy,
+            };
+          } else if (body?.action === 'confirm_cleaning' && body?.weekId) {
+            updated.cleaningRecords[body.weekId] = {
+              ...(updated.cleaningRecords[body.weekId] || {}),
+              weekId: body.weekId,
+              moradorId: body.moradorId,
+              room: body.room || '',
+              confirmed: true,
+              confirmedAt: new Date().toISOString(),
+              confirmedBy: body.confirmedBy,
+              notes: body.notes,
+            };
+          } else if (body?.action === 'update_phone' && body?.moradorId) {
+            updated.phones[body.moradorId] = body.phone || '';
+          } else if (body?.action === 'save_meta' && body?.metaConfig) {
+            updated.metaConfig = { ...updated.metaConfig, ...body.metaConfig };
+          } else if (body && typeof body === 'object') {
+            updated = { ...current, ...body };
+          }
+
+          updated.updatedAt = new Date().toISOString();
+          saveChores(updated);
+          return sendJson(res, 200, { success: true, data: updated });
+        } catch (err: any) {
+          return sendJson(res, 500, { error: err.message });
+        }
+      }
+    }
+
+    // B. WhatsApp Send Endpoint (Dev fallback)
+    if (pathname.startsWith('/api/whatsapp/send')) {
+      if (req.method === 'POST') {
+        try {
+          const body = await readJsonBody(req);
+          const chores = loadChores();
+          const phoneNumberId =
+            process.env.META_WA_PHONE_NUMBER_ID || chores.metaConfig?.phoneNumberId;
+          const accessToken =
+            process.env.META_WA_ACCESS_TOKEN || chores.metaConfig?.accessToken;
+
+          if (!phoneNumberId || !accessToken) {
+            return sendJson(res, 400, {
+              success: false,
+              error: 'Credenciais da Meta API não configuradas.',
+            });
+          }
+
+          let cleanPhone = (body.to || '').replace(/[^\d]/g, '');
+          if (cleanPhone.length === 10 || cleanPhone.length === 11) {
+            cleanPhone = `55${cleanPhone}`;
+          }
+
+          const metaApiUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+          const metaRes = await fetch(metaApiUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: cleanPhone,
+              type: 'text',
+              text: {
+                preview_url: true,
+                body: body.text || '',
+              },
+            }),
+          });
+          const metaData = await metaRes.json();
+          if (!metaRes.ok || metaData.error) {
+            return sendJson(res, metaRes.status || 400, {
+              success: false,
+              error: metaData.error?.message || 'Erro na API da Meta',
+              details: metaData.error,
+            });
+          }
+
+          return sendJson(res, 200, { success: true, metaResponse: metaData });
+        } catch (err: any) {
+          return sendJson(res, 500, { error: err.message });
+        }
+      }
+    }
+
+    if (!pathname.startsWith('/api/reservations')) {
+      return next();
     }
 
     // 1. SSE Events Endpoint

@@ -15,6 +15,8 @@ import {
   Clock,
   Shirt,
   Wind,
+  Trash2,
+  Phone,
 } from 'lucide-react';
 import { Header } from './components/Header';
 import { WeatherWidget } from './components/WeatherWidget';
@@ -25,8 +27,12 @@ import { NewReservationModal } from './components/NewReservationModal';
 import { ReservationDetailModal } from './components/ReservationDetailModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { AdminDashboard } from './components/AdminDashboard';
+import { TrashScheduleView } from './components/TrashScheduleView';
+import { CleaningScheduleView } from './components/CleaningScheduleView';
+import { RoommatesPhonesModal } from './components/RoommatesPhonesModal';
+import { ChoreCelebrationModal } from './components/ChoreCelebrationModal';
 import { ROOMMATES } from './constants/roommates';
-import { MoradorId, Reservation, WeatherData } from './types';
+import { MoradorId, Reservation, WeatherData, ChoresState } from './types';
 import { fetchCopacabanaWeather } from './services/weatherService';
 import {
   getActiveMoradorId,
@@ -39,6 +45,13 @@ import {
   subscribeToSync,
   startLiveCloudSync,
 } from './services/storageService';
+import {
+  loadChoresLocal,
+  fetchChoresFromServer,
+  subscribeToChores,
+  confirmTrashDuty,
+  confirmCleaningDuty,
+} from './services/choresService';
 import { getReservationStatus } from './utils/statusHelper';
 
 function checkIsAdminRoute(): boolean {
@@ -111,7 +124,85 @@ export default function App() {
   };
 
   // 3. Navigation View Tab
+  const [mainTab, setMainTab] = useState<'laundry' | 'trash' | 'cleaning'>('laundry');
   const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'agenda'>('daily');
+
+  // Chores State (Escala do Lixo & Limpeza da Casa)
+  const [chores, setChores] = useState<ChoresState>(loadChoresLocal);
+  const [isPhonesModalOpen, setIsPhonesModalOpen] = useState(false);
+  const [celebration, setCelebration] = useState<{
+    open: boolean;
+    type: 'lixo' | 'limpeza';
+    moradorName?: string;
+  } | null>(null);
+
+  // Synchronize chores with cloud database
+  useEffect(() => {
+    fetchChoresFromServer().then((data) => {
+      if (data) setChores(data);
+    });
+
+    const unsubscribeChores = subscribeToChores((synced) => {
+      setChores(synced);
+    });
+
+    const choresPoll = setInterval(() => {
+      fetchChoresFromServer().then((data) => {
+        if (data) setChores(data);
+      });
+    }, 6000);
+
+    return () => {
+      unsubscribeChores();
+      clearInterval(choresPoll);
+    };
+  }, []);
+
+  // WhatsApp 1-click confirmation detection from URL query params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const confirmChore = params.get('confirm_chore');
+    const confirmed = params.get('confirmed');
+    const dateParam = params.get('date');
+    const weekParam = params.get('week');
+    const moradorParam = params.get('morador') as MoradorId;
+
+    if (confirmChore === 'lixo' && dateParam && moradorParam) {
+      confirmTrashDuty(dateParam, moradorParam).then((updated) => {
+        setChores(updated);
+        setMainTab('trash');
+        const m = ROOMMATES.find((item) => item.id === moradorParam);
+        setCelebration({
+          open: true,
+          type: 'lixo',
+          moradorName: m?.name || 'Morador',
+        });
+        window.history.replaceState({}, '', '/');
+      });
+    } else if (confirmChore === 'limpeza' && weekParam && moradorParam) {
+      confirmCleaningDuty(weekParam, moradorParam).then((updated) => {
+        setChores(updated);
+        setMainTab('cleaning');
+        const m = ROOMMATES.find((item) => item.id === moradorParam);
+        setCelebration({
+          open: true,
+          type: 'limpeza',
+          moradorName: m?.name || 'Morador',
+        });
+        window.history.replaceState({}, '', '/');
+      });
+    } else if (confirmed === 'lixo' || confirmed === 'limpeza') {
+      const m = moradorParam ? ROOMMATES.find((item) => item.id === moradorParam) : undefined;
+      setMainTab(confirmed === 'lixo' ? 'trash' : 'cleaning');
+      setCelebration({
+        open: true,
+        type: confirmed,
+        moradorName: m?.name,
+      });
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   // 4. Date States
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -318,217 +409,284 @@ export default function App() {
         activeMoradorId={activeMoradorId}
         onSelectMorador={handleSelectMorador}
         onOpenNewBooking={() => setIsNewModalOpen(true)}
+        activeMainTab={mainTab}
+        onChangeMainTab={setMainTab}
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         isDark={isDark}
         onToggleDark={toggleDark}
+        onOpenPhonesModal={() => setIsPhonesModalOpen(true)}
       />
 
       {/* Main Container */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 pt-5 space-y-5">
-        {/* Weather Banner Widget */}
-        <WeatherWidget
-          weather={weather}
-          isLoading={weatherLoading}
-          onRefresh={loadWeather}
-        />
-
-        {/* Live Status Cards (Live Overview) */}
-        <section aria-label="Status atual dos recursos" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Card: Máquina */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  currentStatus.machine
-                    ? 'bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
-                    : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                }`}
-              >
-                <Shirt className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Máquina de Lavar
-                </div>
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
-                  {currentStatus.machine ? (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="w-2 h-2 rounded-full inline-block"
-                        style={{ backgroundColor: currentStatus.machine.hex }}
-                      />
-                      <span>{currentStatus.machine.name} batendo</span>
-                    </span>
-                  ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400">Livre agora</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {currentStatus.machine && (
-              <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
-                até {currentStatus.machine.endFmt}
-              </span>
-            )}
-          </div>
-
-          {/* Card: Varal 1 */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  currentStatus.rack1
-                    ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
-                    : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                }`}
-              >
-                <Wind className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Varal 1 (Janela)
-                </div>
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
-                  {currentStatus.rack1 ? (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="w-2 h-2 rounded-full inline-block"
-                        style={{ backgroundColor: currentStatus.rack1.hex }}
-                      />
-                      <span>{currentStatus.rack1.name} ({currentStatus.rack1.status})</span>
-                    </span>
-                  ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400">Varal livre</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {currentStatus.rack1 && (
-              <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
-                libera ~{currentStatus.rack1.endFmt}
-              </span>
-            )}
-          </div>
-
-          {/* Card: Varal 2 */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  currentStatus.rack2
-                    ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
-                    : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                }`}
-              >
-                <Wind className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Varal 2 (Interno)
-                </div>
-                <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
-                  {currentStatus.rack2 ? (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="w-2 h-2 rounded-full inline-block"
-                        style={{ backgroundColor: currentStatus.rack2.hex }}
-                      />
-                      <span>{currentStatus.rack2.name} ({currentStatus.rack2.status})</span>
-                    </span>
-                  ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400">Varal livre</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {currentStatus.rack2 && (
-              <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
-                libera ~{currentStatus.rack2.endFmt}
-              </span>
-            )}
-          </div>
-        </section>
-
-        {/* View Switch Content */}
-        {activeTab === 'daily' && (
-          <DailyTimeline
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-            reservations={reservations}
-            onSelectReservation={(res) => setSelectedReservation(res)}
-          />
-        )}
-
-        {activeTab === 'weekly' && (
-          <WeeklyView
-            currentWeekStart={currentWeekStart}
-            onChangeWeek={setCurrentWeekStart}
-            reservations={reservations}
-            onSelectDate={(d) => {
-              setSelectedDate(d);
-              setActiveTab('daily');
-            }}
-            onSelectReservation={(res) => setSelectedReservation(res)}
-          />
-        )}
-
-        {activeTab === 'agenda' && (
-          <ReservationList
-            reservations={reservations}
-            onSelectReservation={(res) => setSelectedReservation(res)}
-            onReleaseEarly={handleReleaseEarly}
-            onDeleteReservation={handleDelete}
+        {/* TAB 1: ESCALA DO LIXO */}
+        {mainTab === 'trash' && (
+          <TrashScheduleView
+            chores={chores}
+            onUpdateChores={setChores}
             activeMoradorId={activeMoradorId}
+            onOpenPhonesModal={() => setIsPhonesModalOpen(true)}
           />
+        )}
+
+        {/* TAB 2: MANUTENÇÃO DA LIMPEZA */}
+        {mainTab === 'cleaning' && (
+          <CleaningScheduleView
+            chores={chores}
+            onUpdateChores={setChores}
+            activeMoradorId={activeMoradorId}
+            onOpenPhonesModal={() => setIsPhonesModalOpen(true)}
+          />
+        )}
+
+        {/* TAB 3: LAVANDERIA & VARAIS */}
+        {mainTab === 'laundry' && (
+          <>
+            {/* Secondary Subtab Switcher for Laundry Views (Diária, Semanal, Agenda) */}
+            <div className="flex items-center justify-between gap-2 p-1.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-xs">
+              <div className="flex items-center gap-1 text-xs font-medium w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('daily')}
+                  className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeTab === 'daily'
+                      ? 'bg-[#1B2A4A] text-white shadow-xs font-bold'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  Visão Diária
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('weekly')}
+                  className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeTab === 'weekly'
+                      ? 'bg-[#1B2A4A] text-white shadow-xs font-bold'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  Semanal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('agenda')}
+                  className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeTab === 'agenda'
+                      ? 'bg-[#1B2A4A] text-white shadow-xs font-bold'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  }`}
+                >
+                  Todas as Reservas
+                </button>
+              </div>
+            </div>
+
+            {/* Weather Banner Widget */}
+            <WeatherWidget
+              weather={weather}
+              isLoading={weatherLoading}
+              onRefresh={loadWeather}
+            />
+
+            {/* Live Status Cards (Live Overview) */}
+            <section aria-label="Status atual dos recursos" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Card: Máquina */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      currentStatus.machine
+                        ? 'bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-300'
+                        : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    }`}
+                  >
+                    <Shirt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Máquina de Lavar
+                    </div>
+                    <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
+                      {currentStatus.machine ? (
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full inline-block"
+                            style={{ backgroundColor: currentStatus.machine.hex }}
+                          />
+                          <span>{currentStatus.machine.name} batendo</span>
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400">Livre agora</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {currentStatus.machine && (
+                  <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
+                    até {currentStatus.machine.endFmt}
+                  </span>
+                )}
+              </div>
+
+              {/* Card: Varal 1 */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      currentStatus.rack1
+                        ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
+                        : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    }`}
+                  >
+                    <Wind className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Varal 1 (Janela)
+                    </div>
+                    <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
+                      {currentStatus.rack1 ? (
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full inline-block"
+                            style={{ backgroundColor: currentStatus.rack1.hex }}
+                          />
+                          <span>{currentStatus.rack1.name} ({currentStatus.rack1.status})</span>
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400">Varal livre</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {currentStatus.rack1 && (
+                  <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
+                    libera ~{currentStatus.rack1.endFmt}
+                  </span>
+                )}
+              </div>
+
+              {/* Card: Varal 2 */}
+              <div className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-xs flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      currentStatus.rack2
+                        ? 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300'
+                        : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    }`}
+                  >
+                    <Wind className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                      Varal 2 (Interno)
+                    </div>
+                    <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">
+                      {currentStatus.rack2 ? (
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-2 h-2 rounded-full inline-block"
+                            style={{ backgroundColor: currentStatus.rack2.hex }}
+                          />
+                          <span>{currentStatus.rack2.name} ({currentStatus.rack2.status})</span>
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400">Varal livre</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {currentStatus.rack2 && (
+                  <span className="text-[10px] font-mono text-zinc-400 tabular-nums">
+                    libera ~{currentStatus.rack2.endFmt}
+                  </span>
+                )}
+              </div>
+            </section>
+
+            {/* View Switch Content */}
+            {activeTab === 'daily' && (
+              <DailyTimeline
+                selectedDate={selectedDate}
+                onSelectDate={setSelectedDate}
+                reservations={reservations}
+                onSelectReservation={(res) => setSelectedReservation(res)}
+              />
+            )}
+
+            {activeTab === 'weekly' && (
+              <WeeklyView
+                currentWeekStart={currentWeekStart}
+                onChangeWeek={setCurrentWeekStart}
+                reservations={reservations}
+                onSelectDate={(d) => {
+                  setSelectedDate(d);
+                  setActiveTab('daily');
+                }}
+                onSelectReservation={(res) => setSelectedReservation(res)}
+              />
+            )}
+
+            {activeTab === 'agenda' && (
+              <ReservationList
+                reservations={reservations}
+                onSelectReservation={(res) => setSelectedReservation(res)}
+                onReleaseEarly={handleReleaseEarly}
+                onDeleteReservation={handleDelete}
+                activeMoradorId={activeMoradorId}
+              />
+            )}
+          </>
         )}
       </main>
 
-      {/* Mobile Fixed Bottom Navigation Bar (Natural Thumb Zone) */}
+      {/* Mobile Fixed Bottom Navigation Bar (Thumb Zone) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 pb-safe">
         <div className="grid grid-cols-4 items-center h-16 max-w-md mx-auto px-2">
           <button
-            onClick={() => setActiveTab('daily')}
-            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] ${
-              activeTab === 'daily'
+            onClick={() => setMainTab('laundry')}
+            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] cursor-pointer ${
+              mainTab === 'laundry'
                 ? 'text-[#1B2A4A] dark:text-white font-bold'
                 : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
             }`}
           >
-            <Clock className="w-5 h-5" />
-            <span className="text-[10px] mt-1">Diária</span>
+            <Shirt className="w-5 h-5" />
+            <span className="text-[10px] mt-1">Lavanderia</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('weekly')}
-            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] ${
-              activeTab === 'weekly'
+            onClick={() => setMainTab('trash')}
+            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] cursor-pointer ${
+              mainTab === 'trash'
                 ? 'text-[#1B2A4A] dark:text-white font-bold'
                 : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
             }`}
           >
-            <Calendar className="w-5 h-5" />
-            <span className="text-[10px] mt-1">Semanal</span>
+            <Trash2 className="w-5 h-5" />
+            <span className="text-[10px] mt-1">Lixo</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('agenda')}
-            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] ${
-              activeTab === 'agenda'
+            onClick={() => setMainTab('cleaning')}
+            className={`flex flex-col items-center justify-center py-1 transition-colors min-h-[44px] cursor-pointer ${
+              mainTab === 'cleaning'
                 ? 'text-[#1B2A4A] dark:text-white font-bold'
                 : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'
             }`}
           >
-            <ListFilter className="w-5 h-5" />
-            <span className="text-[10px] mt-1">Agenda</span>
+            <Sparkles className="w-5 h-5" />
+            <span className="text-[10px] mt-1">Limpeza</span>
           </button>
 
           <button
             onClick={() => setIsNewModalOpen(true)}
-            className="flex flex-col items-center justify-center py-1 text-[#1B2A4A] dark:text-[#FEF9C3] font-bold min-h-[44px]"
+            className="flex flex-col items-center justify-center py-1 text-[#1B2A4A] dark:text-[#FEF9C3] font-bold min-h-[44px] cursor-pointer"
           >
             <div className="w-8 h-8 rounded-full bg-[#FEF9C3] text-[#1B2A4A] flex items-center justify-center shadow-xs">
               <Plus className="w-5 h-5 stroke-[2.5]" />
@@ -558,6 +716,22 @@ export default function App() {
         onClose={() => setSelectedReservation(null)}
         onReleaseEarly={handleReleaseEarly}
         onDeleteReservation={handleDelete}
+      />
+
+      {/* Roommates Phones & Meta API Settings Modal */}
+      <RoommatesPhonesModal
+        isOpen={isPhonesModalOpen}
+        onClose={() => setIsPhonesModalOpen(false)}
+        chores={chores}
+        onSaveChores={setChores}
+      />
+
+      {/* Chore Celebration Modal */}
+      <ChoreCelebrationModal
+        isOpen={Boolean(celebration?.open)}
+        onClose={() => setCelebration(null)}
+        type={celebration?.type || 'lixo'}
+        moradorName={celebration?.moradorName}
       />
     </div>
   );

@@ -15,6 +15,7 @@ export interface Morador {
   name: string;
   avatarInitials: string;
   room: string;
+  phone?: string;
   color: {
     bg: string;
     text: string;
@@ -132,3 +133,62 @@ export interface TimeSlotConflict {
   };
   suggestedStartTime?: string;
 }
+
+// ==========================================
+// ESCALA DO LIXO & LIMPEZA DA CASA TYPES
+// ==========================================
+
+export type WeekdayNumber = 1 | 2 | 3 | 4 | 5 | 6 | 0; // 1=Segunda ... 5=Sexta, 6=Sábado, 0=Domingo
+
+export interface TrashDutyRule {
+  weekday: 1 | 2 | 3 | 4 | 5; // 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex
+  weekdayName: string;
+  room: string;
+  defaultMoradorId: MoradorId;
+}
+
+export interface TrashDutyRecord {
+  date: string; // YYYY-MM-DD
+  moradorId: MoradorId;
+  room: string;
+  confirmed: boolean;
+  confirmedAt?: string; // ISO date string
+  confirmedBy?: string; // Name
+  whatsappSent?: boolean;
+  whatsappSentAt?: string;
+}
+
+export interface CleaningWeekDuty {
+  weekId: string; // e.g. "2026-W43"
+  weekNumber: number;
+  year: number;
+  startDate: string; // YYYY-MM-DD (Monday)
+  fridayDate: string; // YYYY-MM-DD (Friday reminder)
+  endDate: string; // YYYY-MM-DD (Sunday)
+  moradorId: MoradorId;
+  room: string;
+  confirmed: boolean;
+  confirmedAt?: string;
+  confirmedBy?: string;
+  notes?: string;
+  whatsappSent?: boolean;
+  whatsappSentAt?: string;
+}
+
+export interface MetaWhatsAppConfig {
+  phoneNumberId: string;
+  accessToken: string;
+  businessAccountId?: string;
+  templateName?: string;
+  testMode?: boolean;
+}
+
+export interface ChoresState {
+  phones: Record<MoradorId, string>;
+  trashRecords: Record<string, TrashDutyRecord>; // key: YYYY-MM-DD
+  cleaningRecords: Record<string, CleaningWeekDuty>; // key: weekId
+  metaConfig: MetaWhatsAppConfig;
+  rotationOffset: number;
+  updatedAt: string;
+}
+

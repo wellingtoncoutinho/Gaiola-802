@@ -61,7 +61,7 @@ export const ROOMMATES: Morador[] = [
     id: 'fabio',
     name: 'Fabio',
     avatarInitials: 'FA',
-    room: 'Suíte 5',
+    room: 'Quarto 5 (Suíte)',
     color: {
       bg: 'bg-amber-50 dark:bg-amber-950/40',
       text: 'text-amber-800 dark:text-amber-300',
@@ -72,6 +72,38 @@ export const ROOMMATES: Morador[] = [
     },
   },
 ];
+
+import { TrashDutyRule } from '../types';
+
+export const TRASH_SCHEDULE_RULES: TrashDutyRule[] = [
+  { weekday: 1, weekdayName: 'Segunda-feira', room: 'Quarto 1', defaultMoradorId: 'thaciane' },
+  { weekday: 2, weekdayName: 'Terça-feira', room: 'Quarto 2', defaultMoradorId: 'pedro' },
+  { weekday: 3, weekdayName: 'Quarta-feira', room: 'Quarto 3', defaultMoradorId: 'yan' },
+  { weekday: 4, weekdayName: 'Quinta-feira', room: 'Quarto 4', defaultMoradorId: 'wellington' },
+  { weekday: 5, weekdayName: 'Sexta-feira', room: 'Quarto 5', defaultMoradorId: 'fabio' },
+];
+
+export const CLEANING_ROTATION_ROOMS: { moradorId: import('../types').MoradorId; room: string }[] = [
+  { moradorId: 'thaciane', room: 'Quarto 1' },
+  { moradorId: 'pedro', room: 'Quarto 2' },
+  { moradorId: 'yan', room: 'Quarto 3' },
+  { moradorId: 'wellington', room: 'Quarto 4' },
+  { moradorId: 'fabio', room: 'Quarto 5' },
+];
+
+export const DEFAULT_ROOMMATE_PHONES: Record<import('../types').MoradorId, string> = {
+  thaciane: '',
+  pedro: '',
+  yan: '',
+  wellington: '',
+  fabio: '',
+  lucas: '',
+  clara: '',
+  rodrigo: '',
+  bia: '',
+  gabriel: '',
+};
+
 
 export const LOAD_TYPES: LoadTypeConfig[] = [
   {
