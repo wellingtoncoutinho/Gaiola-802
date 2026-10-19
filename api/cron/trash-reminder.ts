@@ -13,8 +13,8 @@ const TRASH_MAP: Record<number, { room: string; moradorId: string; name: string 
   1: { room: 'Quarto 1', moradorId: 'pedro', name: 'Pedro' },
   2: { room: 'Quarto 2', moradorId: 'yan', name: 'Yan' },
   3: { room: 'Quarto 3', moradorId: 'wellington', name: 'Wellington' },
-  4: { room: 'Quarto 4', moradorId: 'fabio', name: 'Fabio' },
-  5: { room: 'Quarto 5 (Suíte)', moradorId: 'thaciane', name: 'Thaciane' },
+  4: { room: 'Quarto 4 (Suíte)', moradorId: 'fabio', name: 'Fabio' },
+  5: { room: 'Quarto 5', moradorId: 'thaciane', name: 'Thaciane' },
 };
 
 export default async function handler(req: any, res: any) {

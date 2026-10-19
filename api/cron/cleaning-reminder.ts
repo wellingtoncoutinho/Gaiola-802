@@ -13,8 +13,8 @@ const CLEANING_ROOMS = [
   { moradorId: 'pedro', room: 'Quarto 1', name: 'Pedro' },
   { moradorId: 'yan', room: 'Quarto 2', name: 'Yan' },
   { moradorId: 'wellington', room: 'Quarto 3', name: 'Wellington' },
-  { moradorId: 'fabio', room: 'Quarto 4', name: 'Fabio' },
-  { moradorId: 'thaciane', room: 'Quarto 5 (Suíte)', name: 'Thaciane' },
+  { moradorId: 'fabio', room: 'Quarto 4 (Suíte)', name: 'Fabio' },
+  { moradorId: 'thaciane', room: 'Quarto 5', name: 'Thaciane' },
 ];
 
 function getISOWeekNumber(d: Date): number {

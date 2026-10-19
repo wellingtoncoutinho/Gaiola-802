@@ -47,7 +47,7 @@ export const ROOMMATES: Morador[] = [
     id: 'fabio',
     name: 'Fabio',
     avatarInitials: 'FA',
-    room: 'Quarto 4',
+    room: 'Quarto 4 (Suíte)',
     color: {
       bg: 'bg-amber-50 dark:bg-amber-950/40',
       text: 'text-amber-800 dark:text-amber-300',
@@ -61,7 +61,7 @@ export const ROOMMATES: Morador[] = [
     id: 'thaciane',
     name: 'Thaciane',
     avatarInitials: 'TH',
-    room: 'Quarto 5 (Suíte)',
+    room: 'Quarto 5',
     color: {
       bg: 'bg-indigo-50 dark:bg-indigo-950/40',
       text: 'text-indigo-800 dark:text-indigo-300',
@@ -79,7 +79,7 @@ export const TRASH_SCHEDULE_RULES: TrashDutyRule[] = [
   { weekday: 1, weekdayName: 'Segunda-feira', room: 'Quarto 1', defaultMoradorId: 'pedro' },
   { weekday: 2, weekdayName: 'Terça-feira', room: 'Quarto 2', defaultMoradorId: 'yan' },
   { weekday: 3, weekdayName: 'Quarta-feira', room: 'Quarto 3', defaultMoradorId: 'wellington' },
-  { weekday: 4, weekdayName: 'Quinta-feira', room: 'Quarto 4', defaultMoradorId: 'fabio' },
+  { weekday: 4, weekdayName: 'Quinta-feira', room: 'Quarto 4 (Suíte)', defaultMoradorId: 'fabio' },
   { weekday: 5, weekdayName: 'Sexta-feira', room: 'Quarto 5', defaultMoradorId: 'thaciane' },
 ];
 
@@ -87,7 +87,7 @@ export const CLEANING_ROTATION_ROOMS: { moradorId: import('../types').MoradorId;
   { moradorId: 'pedro', room: 'Quarto 1' },
   { moradorId: 'yan', room: 'Quarto 2' },
   { moradorId: 'wellington', room: 'Quarto 3' },
-  { moradorId: 'fabio', room: 'Quarto 4' },
+  { moradorId: 'fabio', room: 'Quarto 4 (Suíte)' },
   { moradorId: 'thaciane', room: 'Quarto 5' },
 ];
 
