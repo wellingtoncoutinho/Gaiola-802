@@ -56,9 +56,21 @@ export function subscribeToChores(callback: (state: ChoresState) => void): () =>
   };
 }
 
+export function mergeWithDefaultPhones(incoming?: Record<string, string>): Record<MoradorId, string> {
+  const result: Record<MoradorId, string> = { ...DEFAULT_ROOMMATE_PHONES };
+  if (incoming && typeof incoming === 'object') {
+    for (const [k, v] of Object.entries(incoming)) {
+      if (v && typeof v === 'string' && v.trim() !== '') {
+        result[k as MoradorId] = v.trim();
+      }
+    }
+  }
+  return result;
+}
+
 export function getDefaultChoresState(): ChoresState {
   return {
-    phones: { ...DEFAULT_ROOMMATE_PHONES },
+    phones: mergeWithDefaultPhones(),
     trashRecords: {},
     cleaningRecords: {},
     metaConfig: {
@@ -82,7 +94,7 @@ export function loadChoresLocal(): ChoresState {
         return {
           ...getDefaultChoresState(),
           ...parsed,
-          phones: { ...DEFAULT_ROOMMATE_PHONES, ...(parsed.phones || {}) },
+          phones: mergeWithDefaultPhones(parsed.phones),
           trashRecords: parsed.trashRecords || {},
           cleaningRecords: parsed.cleaningRecords || {},
           metaConfig: { ...getDefaultChoresState().metaConfig, ...(parsed.metaConfig || {}) },
@@ -151,7 +163,7 @@ export async function fetchChoresFromServer(): Promise<ChoresState> {
         const merged: ChoresState = {
           ...getDefaultChoresState(),
           ...data,
-          phones: { ...DEFAULT_ROOMMATE_PHONES, ...(data.phones || {}) },
+          phones: mergeWithDefaultPhones({ ...(local.phones || {}), ...(data.phones || {}) }),
           trashRecords: mergedTrash,
           cleaningRecords: mergedCleaning,
           metaConfig: { ...getDefaultChoresState().metaConfig, ...(data.metaConfig || {}) },
@@ -641,12 +653,14 @@ export async function saveChoresSettings(
     cleanedPhones[id] = clean;
   }
 
+  const mergedPhones = mergeWithDefaultPhones({
+    ...current.phones,
+    ...cleanedPhones,
+  });
+
   const newState: ChoresState = {
     ...current,
-    phones: {
-      ...current.phones,
-      ...cleanedPhones,
-    },
+    phones: mergedPhones,
     metaConfig: {
       ...current.metaConfig,
       ...newMetaConfig,

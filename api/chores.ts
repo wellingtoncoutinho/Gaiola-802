@@ -19,11 +19,11 @@ interface ChoresData {
 
 const DEFAULT_CHORES_DATA: ChoresData = {
   phones: {
-    pedro: '',
-    yan: '',
-    wellington: '',
-    fabio: '',
-    thaciane: '',
+    pedro: '5522997988174',
+    yan: '5521992260799',
+    wellington: '5562983208784',
+    fabio: '5521966341344',
+    thaciane: '5521980402627',
   },
   trashRecords: {},
   cleaningRecords: {},
@@ -196,6 +196,15 @@ export default async function handler(req: any, res: any) {
       const current = await getChoresFromBlob();
 
       if (action === 'set_all' && body?.data) {
+        // Smart merge phones: NEVER overwrite an existing saved phone with an empty string
+        const incomingPhones = body.data.phones || {};
+        const mergedPhones = { ...current.phones };
+        for (const [key, val] of Object.entries(incomingPhones)) {
+          if (val && typeof val === 'string' && val.trim() !== '') {
+            mergedPhones[key] = val;
+          }
+        }
+
         // Smart merge so older/stale client data doesn't wipe out recent confirmations
         const incomingTrash = body.data.trashRecords || {};
         const incomingCleaning = body.data.cleaningRecords || {};
@@ -219,6 +228,7 @@ export default async function handler(req: any, res: any) {
         const updated = {
           ...current,
           ...body.data,
+          phones: mergedPhones,
           trashRecords: mergedTrash,
           cleaningRecords: mergedCleaning,
           updatedAt: new Date().toISOString(),

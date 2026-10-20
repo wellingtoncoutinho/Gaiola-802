@@ -92,11 +92,11 @@ export const CLEANING_ROTATION_ROOMS: { moradorId: import('../types').MoradorId;
 ];
 
 export const DEFAULT_ROOMMATE_PHONES: Record<import('../types').MoradorId, string> = {
-  pedro: '',
-  yan: '',
-  wellington: '',
-  fabio: '',
-  thaciane: '',
+  pedro: '5522997988174',
+  yan: '5521992260799',
+  wellington: '5562983208784',
+  fabio: '5521966341344',
+  thaciane: '5521980402627',
   lucas: '',
   clara: '',
   rodrigo: '',

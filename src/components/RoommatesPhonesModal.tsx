@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Phone, Save, Check, Sparkles, Shield, Send, HelpCircle, Copy, Loader2 } from 'lucide-react';
 import { ROOMMATES } from '../constants/roommates';
 import { MoradorId, ChoresState, MetaWhatsAppConfig } from '../types';
-import { saveChoresSettings, sendWhatsAppNotification } from '../services/choresService';
+import { saveChoresSettings, sendWhatsAppNotification, mergeWithDefaultPhones } from '../services/choresService';
 
 interface RoommatesPhonesModalProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
   onSaveChores,
 }) => {
   const [activeTab, setActiveTab] = useState<'phones' | 'meta'>('phones');
-  const [phones, setPhones] = useState<Record<MoradorId, string>>(chores.phones);
+  const [phones, setPhones] = useState<Record<MoradorId, string>>(() => mergeWithDefaultPhones(chores.phones));
   const [metaConfig, setMetaConfig] = useState<MetaWhatsAppConfig>(chores.metaConfig);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -34,7 +34,7 @@ export const RoommatesPhonesModal: React.FC<RoommatesPhonesModalProps> = ({
   // Only initialize when modal opens so polling doesn't overwrite active typing!
   useEffect(() => {
     if (isOpen) {
-      setPhones({ ...(chores.phones || {}) });
+      setPhones(mergeWithDefaultPhones(chores.phones));
       setMetaConfig({ ...(chores.metaConfig || {}) });
     }
   }, [isOpen]);

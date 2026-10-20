@@ -254,7 +254,14 @@ export function reservationsApiPlugin(): Plugin {
           let updated = { ...current };
 
           if (body?.action === 'set_all' && body?.data) {
-            updated = { ...current, ...body.data, updatedAt: new Date().toISOString() };
+            const incomingPhones = body.data.phones || {};
+            const mergedPhones = { ...current.phones };
+            for (const [key, val] of Object.entries(incomingPhones)) {
+              if (val && typeof val === 'string' && val.trim() !== '') {
+                mergedPhones[key] = val;
+              }
+            }
+            updated = { ...current, ...body.data, phones: mergedPhones, updatedAt: new Date().toISOString() };
           } else if (body?.action === 'confirm_trash' && body?.date) {
             const existing = updated.trashRecords[body.date] || {};
             updated.trashRecords[body.date] = {
