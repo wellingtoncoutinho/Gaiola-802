@@ -42,8 +42,12 @@ let memoryCache: ChoresData | null = null;
 
 export async function getChoresFromBlob(): Promise<ChoresData> {
   try {
-    const res = await fetch(`${BLOB_URL}?t=${Date.now()}`, {
-      headers: { 'Cache-Control': 'no-cache, no-store' },
+    // Add ?download=1 to bypass Vercel Blob Edge CDN cache, ensuring instant fresh read
+    const res = await fetch(`${BLOB_URL}?download=1&t=${Date.now()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
     });
     if (res.ok) {
       const data = await res.json();
@@ -192,42 +196,95 @@ export default async function handler(req: any, res: any) {
       const current = await getChoresFromBlob();
 
       if (action === 'set_all' && body?.data) {
+        // Smart merge so older/stale client data doesn't wipe out recent confirmations
+        const incomingTrash = body.data.trashRecords || {};
+        const incomingCleaning = body.data.cleaningRecords || {};
+
+        const mergedTrash = { ...current.trashRecords };
+        for (const [key, val] of Object.entries(incomingTrash)) {
+          mergedTrash[key] = {
+            ...(mergedTrash[key] || {}),
+            ...(val as any),
+          };
+        }
+
+        const mergedCleaning = { ...current.cleaningRecords };
+        for (const [key, val] of Object.entries(incomingCleaning)) {
+          mergedCleaning[key] = {
+            ...(mergedCleaning[key] || {}),
+            ...(val as any),
+          };
+        }
+
         const updated = {
           ...current,
           ...body.data,
+          trashRecords: mergedTrash,
+          cleaningRecords: mergedCleaning,
           updatedAt: new Date().toISOString(),
         };
         await saveChoresToBlob(updated);
         return sendResponse(res, 200, { success: true, data: updated });
       }
 
-      if (action === 'confirm_trash' && body?.date && body?.moradorId) {
+      if (action === 'confirm_trash' && body?.date) {
+        const existing = current.trashRecords[body.date] || {};
         current.trashRecords[body.date] = {
+          ...existing,
           date: body.date,
-          moradorId: body.moradorId,
-          room: body.room || '',
+          moradorId: body.moradorId || existing.moradorId || '',
+          room: body.room || existing.room || '',
           confirmed: true,
           confirmedAt: new Date().toISOString(),
-          confirmedBy: body.confirmedBy || body.moradorId,
-          whatsappSent: current.trashRecords[body.date]?.whatsappSent,
-          whatsappSentAt: current.trashRecords[body.date]?.whatsappSentAt,
+          confirmedBy: body.confirmedBy || body.moradorId || 'Morador',
+          whatsappSent: existing.whatsappSent,
+          whatsappSentAt: existing.whatsappSentAt,
         };
         current.updatedAt = new Date().toISOString();
         await saveChoresToBlob(current);
         return sendResponse(res, 200, { success: true, data: current });
       }
 
-      if (action === 'confirm_cleaning' && body?.weekId && body?.moradorId) {
+      if (action === 'unconfirm_trash' && body?.date) {
+        if (current.trashRecords[body.date]) {
+          current.trashRecords[body.date] = {
+            ...current.trashRecords[body.date],
+            confirmed: false,
+            confirmedAt: undefined,
+            confirmedBy: undefined,
+          };
+        }
+        current.updatedAt = new Date().toISOString();
+        await saveChoresToBlob(current);
+        return sendResponse(res, 200, { success: true, data: current });
+      }
+
+      if (action === 'confirm_cleaning' && body?.weekId) {
+        const existing = current.cleaningRecords[body.weekId] || {};
         current.cleaningRecords[body.weekId] = {
-          ...(current.cleaningRecords[body.weekId] || {}),
+          ...existing,
           weekId: body.weekId,
-          moradorId: body.moradorId,
-          room: body.room || '',
+          moradorId: body.moradorId || existing.moradorId || '',
+          room: body.room || existing.room || '',
           confirmed: true,
           confirmedAt: new Date().toISOString(),
-          confirmedBy: body.confirmedBy || body.moradorId,
-          notes: body.notes,
+          confirmedBy: body.confirmedBy || body.moradorId || 'Morador',
+          notes: body.notes || existing.notes,
         };
+        current.updatedAt = new Date().toISOString();
+        await saveChoresToBlob(current);
+        return sendResponse(res, 200, { success: true, data: current });
+      }
+
+      if (action === 'unconfirm_cleaning' && body?.weekId) {
+        if (current.cleaningRecords[body.weekId]) {
+          current.cleaningRecords[body.weekId] = {
+            ...current.cleaningRecords[body.weekId],
+            confirmed: false,
+            confirmedAt: undefined,
+            confirmedBy: undefined,
+          };
+        }
         current.updatedAt = new Date().toISOString();
         await saveChoresToBlob(current);
         return sendResponse(res, 200, { success: true, data: current });

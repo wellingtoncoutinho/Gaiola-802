@@ -256,25 +256,46 @@ export function reservationsApiPlugin(): Plugin {
           if (body?.action === 'set_all' && body?.data) {
             updated = { ...current, ...body.data, updatedAt: new Date().toISOString() };
           } else if (body?.action === 'confirm_trash' && body?.date) {
+            const existing = updated.trashRecords[body.date] || {};
             updated.trashRecords[body.date] = {
+              ...existing,
               date: body.date,
-              moradorId: body.moradorId,
-              room: body.room || '',
+              moradorId: body.moradorId || existing.moradorId || '',
+              room: body.room || existing.room || '',
               confirmed: true,
               confirmedAt: new Date().toISOString(),
-              confirmedBy: body.confirmedBy,
+              confirmedBy: body.confirmedBy || 'Morador',
             };
+          } else if (body?.action === 'unconfirm_trash' && body?.date) {
+            if (updated.trashRecords[body.date]) {
+              updated.trashRecords[body.date] = {
+                ...updated.trashRecords[body.date],
+                confirmed: false,
+                confirmedAt: undefined,
+                confirmedBy: undefined,
+              };
+            }
           } else if (body?.action === 'confirm_cleaning' && body?.weekId) {
+            const existing = updated.cleaningRecords[body.weekId] || {};
             updated.cleaningRecords[body.weekId] = {
-              ...(updated.cleaningRecords[body.weekId] || {}),
+              ...existing,
               weekId: body.weekId,
-              moradorId: body.moradorId,
-              room: body.room || '',
+              moradorId: body.moradorId || existing.moradorId || '',
+              room: body.room || existing.room || '',
               confirmed: true,
               confirmedAt: new Date().toISOString(),
-              confirmedBy: body.confirmedBy,
-              notes: body.notes,
+              confirmedBy: body.confirmedBy || 'Morador',
+              notes: body.notes || existing.notes,
             };
+          } else if (body?.action === 'unconfirm_cleaning' && body?.weekId) {
+            if (updated.cleaningRecords[body.weekId]) {
+              updated.cleaningRecords[body.weekId] = {
+                ...updated.cleaningRecords[body.weekId],
+                confirmed: false,
+                confirmedAt: undefined,
+                confirmedBy: undefined,
+              };
+            }
           } else if (body?.action === 'update_phone' && body?.moradorId) {
             updated.phones[body.moradorId] = body.phone || '';
           } else if (body?.action === 'save_meta' && body?.metaConfig) {

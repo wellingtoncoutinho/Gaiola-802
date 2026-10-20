@@ -112,17 +112,48 @@ export function saveChoresLocal(state: ChoresState): void {
 export async function fetchChoresFromServer(): Promise<ChoresState> {
   try {
     const res = await fetch(`/api/chores?t=${Date.now()}`, {
-      headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
     });
     if (res.ok) {
       const data = await res.json();
       if (data && typeof data === 'object' && data.phones) {
+        const local = loadChoresLocal();
+
+        // Intelligent bidirectional merge: don't let transient cache overwrite active confirmations
+        const mergedTrash: Record<string, TrashDutyRecord> = { ...(data.trashRecords || {}) };
+        if (local.trashRecords) {
+          for (const [key, localRec] of Object.entries(local.trashRecords)) {
+            if (localRec?.confirmed) {
+              const serverRec = mergedTrash[key];
+              if (!serverRec || !serverRec.confirmed) {
+                mergedTrash[key] = localRec;
+              }
+            }
+          }
+        }
+
+        const mergedCleaning: Record<string, CleaningWeekDuty> = { ...(data.cleaningRecords || {}) };
+        if (local.cleaningRecords) {
+          for (const [key, localRec] of Object.entries(local.cleaningRecords)) {
+            if (localRec?.confirmed) {
+              const serverRec = mergedCleaning[key];
+              if (!serverRec || !serverRec.confirmed) {
+                mergedCleaning[key] = localRec;
+              }
+            }
+          }
+        }
+
         const merged: ChoresState = {
           ...getDefaultChoresState(),
           ...data,
           phones: { ...DEFAULT_ROOMMATE_PHONES, ...(data.phones || {}) },
-          trashRecords: data.trashRecords || {},
-          cleaningRecords: data.cleaningRecords || {},
+          trashRecords: mergedTrash,
+          cleaningRecords: mergedCleaning,
           metaConfig: { ...getDefaultChoresState().metaConfig, ...(data.metaConfig || {}) },
         };
         saveChoresLocal(merged);
@@ -365,7 +396,34 @@ export async function confirmTrashDuty(
     updatedAt: new Date().toISOString(),
   };
 
-  return syncChoresToServer(newState);
+  // 1. Immediately persist locally and broadcast to UI
+  saveChoresLocal(newState);
+
+  // 2. Send dedicated atomic confirm_trash action to server
+  try {
+    const res = await fetch('/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'confirm_trash',
+        date: dateKey,
+        moradorId,
+        room: morador?.room || '',
+        confirmedBy: name,
+      }),
+    });
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData?.data) {
+        saveChoresLocal(serverData.data);
+        return serverData.data;
+      }
+    }
+  } catch (err) {
+    console.warn('[ChoresService] Server confirm_trash failed, using local cache:', err);
+  }
+
+  return newState;
 }
 
 export async function unconfirmTrashDuty(dateKey: string): Promise<ChoresState> {
@@ -387,7 +445,29 @@ export async function unconfirmTrashDuty(dateKey: string): Promise<ChoresState> 
     updatedAt: new Date().toISOString(),
   };
 
-  return syncChoresToServer(newState);
+  saveChoresLocal(newState);
+
+  try {
+    const res = await fetch('/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'unconfirm_trash',
+        date: dateKey,
+      }),
+    });
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData?.data) {
+        saveChoresLocal(serverData.data);
+        return serverData.data;
+      }
+    }
+  } catch (err) {
+    console.warn('[ChoresService] Server unconfirm_trash failed, using local cache:', err);
+  }
+
+  return newState;
 }
 
 /**
@@ -433,7 +513,33 @@ export async function confirmCleaningDuty(
     updatedAt: new Date().toISOString(),
   };
 
-  return syncChoresToServer(newState);
+  saveChoresLocal(newState);
+
+  try {
+    const res = await fetch('/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'confirm_cleaning',
+        weekId,
+        moradorId,
+        room: morador?.room || '',
+        confirmedBy: name,
+        notes,
+      }),
+    });
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData?.data) {
+        saveChoresLocal(serverData.data);
+        return serverData.data;
+      }
+    }
+  } catch (err) {
+    console.warn('[ChoresService] Server confirm_cleaning failed, using local cache:', err);
+  }
+
+  return newState;
 }
 
 export async function unconfirmCleaningDuty(weekId: string): Promise<ChoresState> {
@@ -455,7 +561,29 @@ export async function unconfirmCleaningDuty(weekId: string): Promise<ChoresState
     updatedAt: new Date().toISOString(),
   };
 
-  return syncChoresToServer(newState);
+  saveChoresLocal(newState);
+
+  try {
+    const res = await fetch('/api/chores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'unconfirm_cleaning',
+        weekId,
+      }),
+    });
+    if (res.ok) {
+      const serverData = await res.json();
+      if (serverData?.data) {
+        saveChoresLocal(serverData.data);
+        return serverData.data;
+      }
+    }
+  } catch (err) {
+    console.warn('[ChoresService] Server unconfirm_cleaning failed, using local cache:', err);
+  }
+
+  return newState;
 }
 
 /**

@@ -177,11 +177,13 @@ export default async function handler(req: any, res: any) {
 
       if (sentSuccess) {
         const now = new Date().toISOString();
+        const existing = chores.trashRecords[dateKey] || {};
         chores.trashRecords[dateKey] = {
+          ...existing,
           date: dateKey,
           moradorId: assigned.moradorId,
           room: assigned.room,
-          confirmed: false,
+          confirmed: existing.confirmed ?? false,
           whatsappSent: true,
           whatsappSentAt: now,
         };

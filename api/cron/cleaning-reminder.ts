@@ -192,16 +192,18 @@ Checklist:
 
       if (sentSuccess) {
         const now = new Date().toISOString();
+        const existingRecord = chores.cleaningRecords[weekId] || {};
         chores.cleaningRecords[weekId] = {
+          ...existingRecord,
           weekId,
           weekNumber,
           year,
-          startDate: '',
-          fridayDate: '',
-          endDate: '',
+          startDate: existingRecord.startDate || '',
+          fridayDate: existingRecord.fridayDate || '',
+          endDate: existingRecord.endDate || '',
           moradorId: assigned.moradorId,
           room: assigned.room,
-          confirmed: false,
+          confirmed: existingRecord.confirmed ?? false,
           whatsappSent: true,
           whatsappSentAt: now,
         };

@@ -34,8 +34,12 @@ let memoryCache: Reservation[] | null = null;
 
 async function getReservationsFromBlob(): Promise<Reservation[]> {
   try {
-    const res = await fetch(`${BLOB_URL}?t=${Date.now()}`, {
-      headers: { 'Cache-Control': 'no-cache, no-store' },
+    // Add ?download=1 to bypass Vercel Blob Edge CDN cache, ensuring instant fresh read
+    const res = await fetch(`${BLOB_URL}?download=1&t=${Date.now()}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
     });
     if (res.ok) {
       const data = await res.json();
