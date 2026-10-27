@@ -159,6 +159,43 @@ export default async function handler(req: any, res: any) {
       const chores = await getChoresFromBlob();
       const accessToken = process.env.META_WA_ACCESS_TOKEN || chores.metaConfig?.accessToken || '';
 
+      // Extract button reply ID or incoming text body
+      let buttonId = '';
+      let textBody = '';
+
+      if (message.type === 'button') {
+        // Quick Reply button clicked from Meta Template message (e.g. gaiola_aviso_lixo / gaiola_aviso_limpeza)
+        buttonId = message.button?.payload || '';
+        textBody = (message.button?.text || '').trim();
+      } else if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
+        buttonId = message.interactive.button_reply?.id || '';
+        textBody = (message.interactive.button_reply?.title || '').trim();
+      } else if (message.type === 'text') {
+        textBody = (message.text?.body || '').trim();
+      }
+
+      const combinedText = `${buttonId} ${textBody}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+      // Check if button click or message confirms TRASH duty
+      const isTrashConfirm =
+        buttonId.startsWith('CONFIRM_TRASH_') ||
+        buttonId === 'CONFIRM_TRASH' ||
+        combinedText.includes('confirmar retirada') ||
+        combinedText.includes('lixo retirado') ||
+        combinedText.includes('retirei o lixo') ||
+        combinedText.includes('tirei o lixo') ||
+        combinedText.includes('retirei') ||
+        combinedText.includes('lixo');
+
+      // Check if button click or message confirms CLEANING duty
+      const isCleaningConfirm =
+        buttonId.startsWith('CONFIRM_CLEANING_') ||
+        buttonId === 'CONFIRM_CLEANING' ||
+        combinedText.includes('limpeza concluida') ||
+        combinedText.includes('manutencao concluida') ||
+        combinedText.includes('faxina concluida') ||
+        combinedText.includes('limpei');
+
       // Match sender to roommate
       let matchedMorador = ROOMMATES_META.find((m) => {
         const storedPhone = (chores.phones[m.id] || '').replace(/[^\d]/g, '');
@@ -166,46 +203,34 @@ export default async function handler(req: any, res: any) {
         return senderPhone.endsWith(storedPhone.slice(-8)) || storedPhone.endsWith(senderPhone.slice(-8));
       });
 
-      // Extract button reply ID or incoming text body
-      let buttonId = '';
-      let textBody = '';
+      const todayDateKey = getBrazilDateString();
+      const currentWeekId = getISOWeekId();
 
-      if (message.type === 'interactive' && message.interactive?.type === 'button_reply') {
-        buttonId = message.interactive.button_reply?.id || '';
-      } else if (message.type === 'text') {
-        textBody = (message.text?.body || '').trim().toLowerCase();
+      // Fallback matching if phone wasn't matched directly
+      if (!matchedMorador) {
+        if (isTrashConfirm) {
+          const brazilDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+          const currentWeekday = brazilDate.getDay();
+          matchedMorador = ROOMMATES_META.find((m) => m.weekday === currentWeekday) || ROOMMATES_META[0];
+        } else if (isCleaningConfirm) {
+          const weekNum = parseInt(currentWeekId.split('-W')[1] || '0', 10);
+          const rotationIndex = Math.abs((weekNum + (chores.rotationOffset || 0)) % ROOMMATES_META.length);
+          matchedMorador = ROOMMATES_META[rotationIndex] || ROOMMATES_META[0];
+        }
       }
 
       console.log('[Meta Webhook Event Received]:', {
         senderPhone,
         senderContactName,
+        messageType: message.type,
         buttonId,
         textBody,
         matchedMorador: matchedMorador?.name,
+        isTrashConfirm,
+        isCleaningConfirm,
       });
 
-      const todayDateKey = getBrazilDateString();
-      const currentWeekId = getISOWeekId();
       let updated = false;
-
-      // Check if button click or message confirms TRASH duty
-      const isTrashConfirm =
-        buttonId.startsWith('CONFIRM_TRASH_') ||
-        buttonId === 'CONFIRM_TRASH' ||
-        textBody.includes('confirmar retirada') ||
-        textBody.includes('lixo retirado') ||
-        textBody === 'lixo' ||
-        textBody === 'retirei';
-
-      // Check if button click or message confirms CLEANING duty
-      const isCleaningConfirm =
-        buttonId.startsWith('CONFIRM_CLEANING_') ||
-        buttonId === 'CONFIRM_CLEANING' ||
-        textBody.includes('limpeza concluída') ||
-        textBody.includes('limpeza concluida') ||
-        textBody.includes('manutenção concluída') ||
-        textBody.includes('faxina concluída') ||
-        textBody === 'limpei';
 
       if (isTrashConfirm) {
         let dateKey = todayDateKey;
@@ -214,15 +239,14 @@ export default async function handler(req: any, res: any) {
           if (extracted && extracted.length === 10) dateKey = extracted;
         }
 
-        const existing = chores.trashRecords[dateKey] || {
-          date: dateKey,
-          moradorId: matchedMorador?.id || '',
-          room: matchedMorador?.room || '',
-        };
+        const existing = chores.trashRecords[dateKey] || {};
 
         const now = new Date().toISOString();
         chores.trashRecords[dateKey] = {
           ...existing,
+          date: dateKey,
+          moradorId: existing.moradorId || matchedMorador?.id || '',
+          room: existing.room || matchedMorador?.room || '',
           confirmed: true,
           confirmedAt: now,
           confirmedBy: matchedMorador?.name || senderContactName || 'WhatsApp',
@@ -244,15 +268,14 @@ export default async function handler(req: any, res: any) {
           if (extracted && extracted.includes('-W')) weekId = extracted;
         }
 
-        const existing = chores.cleaningRecords[weekId] || {
-          weekId,
-          moradorId: matchedMorador?.id || '',
-          room: matchedMorador?.room || '',
-        };
+        const existing = chores.cleaningRecords[weekId] || {};
 
         const now = new Date().toISOString();
         chores.cleaningRecords[weekId] = {
           ...existing,
+          weekId,
+          moradorId: existing.moradorId || matchedMorador?.id || '',
+          room: existing.room || matchedMorador?.room || '',
           confirmed: true,
           confirmedAt: now,
           confirmedBy: matchedMorador?.name || senderContactName || 'WhatsApp',
